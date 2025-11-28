@@ -1,209 +1,316 @@
-// 立即顯示基本 UI，避免延遲
+// 點擊擴充功能時自動判斷是否可分析，能分析就直接開全螢幕
 (function() {
-  // 預先定義支援的站點列表（避免重複定義）
   const supportedSites = [
-    'pretty.presslogic.com',
-    'girlstyle.com',
-    'holidaysmart.io',
-    'urbanlifehk.com',
-    'poplady-mag.com',
-    'topbeautyhk.com',
-    'thekdaily.com',
-    'businessfocus.io',
-    'mamidaily.com',
-    'thepetcity.co'
+    { name: 'Pretty', domain: 'pretty.presslogic.com' },
+    { name: 'GirlStyle', domain: 'girlstyle.com' },
+    { name: 'HolidaySmart', domain: 'holidaysmart.io' },
+    { name: 'UrbanLife', domain: 'urbanlifehk.com' },
+    { name: 'PopLady', domain: 'poplady-mag.com' },
+    { name: 'TopBeauty', domain: 'topbeautyhk.com' },
+    { name: 'TheKDaily', domain: 'thekdaily.com' },
+    { name: 'BusinessFocus', domain: 'businessfocus.io' },
+    { name: 'MamiDaily', domain: 'mamidaily.com' },
+    { name: 'ThePetCity', domain: 'thepetcity.co' }
   ];
 
-  // 檢查是否為 WordPress 站點（簡化版本）
-  function isWordPressSite(url) {
+  const supportedHostnames = supportedSites.map(site => site.domain);
+  let currentTab = null;
+  let autoLaunchTriggered = false;
+  let lastFallbackMessage = '';
+
+  function renderSupportedSites(container) {
+    if (!container) return;
+    container.innerHTML = supportedSites
+      .map(site => `<span class="site-pill">${site.name} (${site.domain})</span>`)
+      .join('');
+  }
+
+  function renderNavButtons(container) {
+    if (!container) return;
+    container.innerHTML = supportedSites
+      .map(site => `<button class="nav-button" data-url="https://${site.domain}">${site.name}</button>`)
+      .join('');
+  }
+
+  function revealMainContent(initialLoading, mainContent) {
+    if (initialLoading) initialLoading.style.display = 'none';
+    if (mainContent) mainContent.style.display = 'block';
+  }
+
+  function normalizeUrl(input) {
+    if (!input) return '';
+    const trimmed = input.trim();
+    try {
+      return new URL(trimmed).toString();
+    } catch {
+      try {
+        return new URL(`https://${trimmed}`).toString();
+      } catch {
+        return '';
+      }
+    }
+  }
+
+  function setStatus(statusIcon, statusTitle, statusSubtitle, statusCard, icon, title, subtitle, tone = 'active') {
+    if (statusIcon) statusIcon.textContent = icon;
+    if (statusTitle) statusTitle.textContent = title;
+    if (statusSubtitle) statusSubtitle.textContent = subtitle;
+    if (statusCard) statusCard.dataset.tone = tone;
+  }
+
+  function showLoading(loadingEl, loadingTextEl, show = true, text = '正在開啟全螢幕分析...') {
+    if (!loadingEl) return;
+    loadingEl.style.display = show ? 'flex' : 'none';
+    if (show && loadingTextEl && text) {
+      loadingTextEl.textContent = text;
+    }
+  }
+
+  function showFallback(ui, title, message) {
+    const fullMessage = message || '請直接前往支援的文章頁（需包含 /article/）再啟動插件，或貼上文章網址開啟新分頁。';
+    lastFallbackMessage = fullMessage;
+
+    // 隱藏狀態卡片，專注呈現可行動選項
+    if (ui.statusCard) {
+      ui.statusCard.style.display = 'none';
+    }
+    showLoading(ui.loading, ui.loadingText, false);
+
+    if (ui.pageInfo) {
+      ui.pageInfo.style.display = 'none';
+    }
+    if (ui.fallbackCard) {
+      ui.fallbackCard.style.display = 'block';
+    }
+    if (ui.fallbackTitle) ui.fallbackTitle.textContent = title;
+    if (ui.fallbackMessage) ui.fallbackMessage.textContent = fullMessage;
+  }
+
+  function updateFallbackMessage(ui, message) {
+    lastFallbackMessage = message;
+    if (ui.fallbackMessage) {
+      ui.fallbackMessage.textContent = message;
+    }
+  }
+
+  async function openUrlInNewTab(ui, url) {
+    const normalized = normalizeUrl(url);
+    if (!normalized) {
+      updateFallbackMessage(ui, '請輸入有效的 http/https 網址');
+      return;
+    }
+
+    try {
+      const parsed = new URL(normalized);
+      const isSupported = supportedHostnames.includes(parsed.hostname) && parsed.pathname.includes('/article/');
+      if (!isSupported) {
+        updateFallbackMessage(ui, '僅支援 PressLogic/WordPress 文章頁（需包含 /article/）');
+        return;
+      }
+
+      showLoading(ui.loading, ui.loadingText, true, '正在開啟全螢幕分析...');
+      await chrome.storage.local.set({
+        analysisData: {
+          url: parsed.href,
+          title: parsed.href,
+          timestamp: Date.now(),
+          source: 'custom-url'
+        }
+      });
+
+      const fullscreenUrl = chrome.runtime.getURL('fullscreen.html?action=url');
+      await chrome.tabs.create({ url: fullscreenUrl, active: true });
+      window.close();
+    } catch (err) {
+      console.warn('無效網址:', err);
+      updateFallbackMessage(ui, err.message || '網址格式不正確，請重新確認');
+    } finally {
+      showLoading(ui.loading, ui.loadingText, false);
+    }
+  }
+
+  function evaluatePage(url) {
+    if (!url) {
+      return { canAnalyze: false, title: '讀不到目前頁面', message: '請確認您位於要分析的分頁後再試。' };
+    }
+
     try {
       const urlObj = new URL(url);
-      return supportedSites.includes(urlObj.hostname);
+
+      if (!['http:', 'https:'].includes(urlObj.protocol)) {
+        return { canAnalyze: false, title: '無法分析這類頁面', message: '僅支援一般 http/https 網站內容。' };
+      }
+
+      if (url.startsWith('chrome://') || url.startsWith('chrome-extension://')) {
+        return { canAnalyze: false, title: '這個頁面屬於瀏覽器內建頁面', message: '請在一般網站頁面上再開啟一次擴充功能。' };
+      }
+
+      if (!supportedHostnames.includes(urlObj.hostname)) {
+        return { canAnalyze: false, title: '請改到支援的文章頁', message: '點選下方支援站點或貼上文章網址（需包含 /article/），開啟新分頁後再點擊插件即可分析。' };
+      }
+
+      if (!urlObj.pathname.includes('/article/')) {
+        return { canAnalyze: false, title: '請前往文章頁', message: '開啟含 /article/ 的文章連結或貼上文章網址，下方提供快速導向與輸入框。' };
+      }
+
+      return { canAnalyze: true };
     } catch {
-      return false;
+      return { canAnalyze: false, title: '無法解析目前網址', message: '請確認網址有效或重新整理頁面後再試。' };
     }
   }
 
-  // 主要初始化函數
-  async function initialize() {
-    // 獲取 DOM 元素
-    const initialLoading = document.getElementById('initialLoading');
-    const mainContent = document.getElementById('mainContent');
-    const analyzeBtn = document.getElementById('analyzeBtn');
-    const pageTitle = document.getElementById('pageTitle');
-    const pageUrl = document.getElementById('pageUrl');
-    const loading = document.getElementById('loading');
-    const error = document.getElementById('error');
-    const quickActions = document.querySelectorAll('.quick-action');
-    
-    let currentTab = null;
-
-    // 顯示錯誤訊息
-    function showError(message) {
-      error.textContent = message;
-      error.style.display = 'block';
-      setTimeout(() => {
-        error.style.display = 'none';
-      }, 5000);
-    }
-
-    // 顯示載入狀態
-    function showLoading(show = true) {
-      loading.style.display = show ? 'block' : 'none';
-      analyzeBtn.disabled = show;
-      if (show) {
-        analyzeBtn.textContent = '分析中...';
-      } else {
-        analyzeBtn.innerHTML = '🚀 開啟全螢幕分析';
+  async function getCurrentPageInfo(ui) {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab) {
+        throw new Error('無法取得目前的分頁資訊');
       }
+
+      currentTab = tab;
+
+      if (ui.pageTitle) ui.pageTitle.textContent = tab.title || '無標題';
+      if (ui.pageUrl) ui.pageUrl.textContent = tab.url || '無 URL';
+
+      revealMainContent(ui.initialLoading, ui.mainContent);
+      return tab;
+    } catch (err) {
+      console.error('獲取當前頁面資訊失敗:', err);
+      revealMainContent(ui.initialLoading, ui.mainContent);
+      showFallback(ui, '無法取得目前頁面', '請重新整理或在可分析的頁面上重試。');
+      return null;
+    }
+  }
+
+  async function getPageContent() {
+    if (!currentTab) {
+      throw new Error('找不到可分析的分頁');
     }
 
-    // 更新 UI 以顯示非 WordPress 站點狀態
-    function updateUIForNonWordPress() {
-      analyzeBtn.innerHTML = '🚧 外站分析開發中';
-      analyzeBtn.style.background = 'linear-gradient(135deg, #f39c12 0%, #e67e22 100%)';
-      
-      const quickActionsContainer = document.querySelector('.quick-actions');
-      quickActionsContainer.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 20px; 
-                    background: rgba(243, 156, 18, 0.1); border-radius: 8px; 
-                    border: 1px solid rgba(243, 156, 18, 0.3);">
-          <div style="font-size: 24px; margin-bottom: 10px;">🚧</div>
-          <div style="font-size: 14px; font-weight: 600; margin-bottom: 5px;">外站分析功能開發中</div>
-          <div style="font-size: 12px; opacity: 0.8;">目前僅支援 WordPress/PressLogic 站點</div>
-        </div>
-      `;
-    }
-
-    // 獲取當前頁面資訊（優化版）
-    async function getCurrentPageInfo() {
-      try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        currentTab = tab;
-        
-        // 立即更新頁面資訊顯示
-        pageTitle.textContent = tab.title || '無標題';
-        pageUrl.textContent = tab.url || '無 URL';
-        
-        // 隱藏初始載入，顯示主要內容
-        initialLoading.style.display = 'none';
-        mainContent.style.display = 'block';
-        
-        // 檢查是否為有效的網頁
-        if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
-          throw new Error('無法分析此頁面類型');
-        }
-        
-        // 檢查是否為 WordPress 站點
-        if (!isWordPressSite(tab.url)) {
-          updateUIForNonWordPress();
-        }
-        
-        return tab;
-      } catch (err) {
-        initialLoading.style.display = 'none';
-        mainContent.style.display = 'block';
-        showError('無法獲取頁面資訊: ' + err.message);
-        return null;
-      }
-    }
-
-    // 獲取頁面 HTML 內容（僅在需要時調用）
-    async function getPageContent() {
-      try {
-        const [result] = await chrome.scripting.executeScript({
-          target: { tabId: currentTab.id },
-          func: () => {
-            return {
-              html: document.documentElement.outerHTML,
-              title: document.title,
-              url: window.location.href
-            };
-          }
-        });
-        
-        return result.result;
-      } catch (err) {
-        throw new Error('無法獲取頁面內容: ' + err.message);
-      }
-    }
-
-    // 開啟全螢幕分析頁面
-    async function openFullscreenAnalysis() {
-      if (!currentTab) return;
-      
-      try {
-        showLoading(true);
-        
-        // 延遲獲取頁面內容，只在真正需要時才執行
-        const pageContent = await getPageContent();
-        
-        // 檢查 HTML 內容大小
-        const htmlSize = new Blob([pageContent.html]).size;
-        const sizeInMB = (htmlSize / (1024 * 1024)).toFixed(2);
-        
-        console.log(`HTML 內容大小: ${sizeInMB} MB`);
-        
-        // 如果超過 10MB，顯示警告但仍繼續
-        if (htmlSize > 10 * 1024 * 1024) {
-          console.warn('HTML 內容較大，可能影響分析速度');
-        }
-        
-        // 將頁面內容存儲到 Chrome storage
-        await chrome.storage.local.set({
-          analysisData: {
-            html: pageContent.html,
-            title: pageContent.title,
-            url: pageContent.url,
-            timestamp: Date.now(),
-            htmlSize: htmlSize
-          }
-        });
-        
-        // 開啟全螢幕分析頁面
-        const fullscreenUrl = chrome.runtime.getURL('fullscreen.html');
-        await chrome.tabs.create({
-          url: fullscreenUrl,
-          active: true
-        });
-        
-        // 關閉彈窗
-        window.close();
-        
-      } catch (err) {
-        console.error('分析失敗:', err);
-        showError('分析失敗: ' + err.message);
-      } finally {
-        showLoading(false);
-      }
-    }
-
-    // 快速操作處理
-    function handleQuickAction(actionId) {
-      openFullscreenAnalysis();
-    }
-
-    // 綁定事件監聽（使用事件委派提高性能）
-    analyzeBtn.addEventListener('click', openFullscreenAnalysis);
-    
-    // 使用單一事件監聽器處理所有快速操作
-    const quickActionsContainer = document.querySelector('.quick-actions');
-    quickActionsContainer.addEventListener('click', (e) => {
-      const quickAction = e.target.closest('.quick-action');
-      if (quickAction) {
-        handleQuickAction(quickAction.id);
-      }
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId: currentTab.id },
+      func: () => ({
+        html: document.documentElement.outerHTML,
+        title: document.title,
+        url: window.location.href
+      })
     });
 
-    // 執行初始化
-    await getCurrentPageInfo();
+    return result.result;
   }
 
-  // 確保 DOM 完全載入後再執行
+  async function openFullscreenAnalysis(ui, action = 'all') {
+    if (!currentTab) return;
+
+    try {
+      showLoading(ui.loading, ui.loadingText, true, '正在開啟全螢幕分析...');
+      setStatus(ui.statusIcon, ui.statusTitle, ui.statusSubtitle, ui.statusCard,
+        '🚀', '符合條件，正在開啟全螢幕分析', '會在新分頁載入完整結果', 'active');
+
+      await chrome.storage.local.set({
+        analysisData: {
+          // 只存必要欄位，減少等待
+          title: currentTab.title,
+          url: currentTab.url,
+          timestamp: Date.now()
+        }
+      });
+
+      const fullscreenUrl = chrome.runtime.getURL(`fullscreen.html?action=${action}`);
+      await chrome.tabs.create({
+        url: fullscreenUrl,
+        active: true
+      });
+
+      window.close();
+    } catch (err) {
+      console.error('分析失敗:', err);
+      showFallback(ui, '分析失敗', err?.message || '請檢查網路連線或稍後再試。');
+    } finally {
+      showLoading(ui.loading, ui.loadingText, false);
+    }
+  }
+
+  async function attemptAutoLaunch(ui) {
+    if (autoLaunchTriggered) return;
+    autoLaunchTriggered = true;
+
+    await openFullscreenAnalysis(ui, 'all');
+  }
+
+  async function initialize() {
+    const ui = {
+      initialLoading: document.getElementById('initialLoading'),
+      mainContent: document.getElementById('mainContent'),
+      statusCard: document.getElementById('statusCard'),
+      statusIcon: document.getElementById('statusIcon'),
+      statusTitle: document.getElementById('statusTitle'),
+      statusSubtitle: document.getElementById('statusSubtitle'),
+      pageTitle: document.getElementById('pageTitle'),
+      pageUrl: document.getElementById('pageUrl'),
+      pageInfo: document.getElementById('pageInfo'),
+      loading: document.getElementById('loading'),
+      loadingText: document.getElementById('loadingText'),
+      fallbackCard: document.getElementById('fallbackCard'),
+      fallbackTitle: document.getElementById('fallbackTitle'),
+      fallbackMessage: document.getElementById('fallbackMessage'),
+      supportedSitesList: document.getElementById('supportedSitesList'),
+      navButtons: document.getElementById('navButtons'),
+      customUrlInput: document.getElementById('customUrlInput'),
+      openUrlBtn: document.getElementById('openUrlBtn')
+    };
+
+    // 立即顯示主要內容，不等待背景檢查
+    revealMainContent(ui.initialLoading, ui.mainContent);
+
+    renderSupportedSites(ui.supportedSitesList);
+    renderNavButtons(ui.navButtons);
+    setStatus(ui.statusIcon, ui.statusTitle, ui.statusSubtitle, ui.statusCard,
+      '🔍', '正在檢查這個頁面...', '符合條件時會自動開啟全螢幕分析', 'active');
+
+    if (ui.navButtons) {
+      ui.navButtons.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target.matches('.nav-button') && target.dataset.url) {
+          openUrlInNewTab(ui, target.dataset.url);
+        }
+      });
+    }
+
+    if (ui.openUrlBtn && ui.customUrlInput) {
+      ui.openUrlBtn.addEventListener('click', () => {
+        const url = ui.customUrlInput.value.trim();
+        if (!url) {
+          updateFallbackMessage(ui, '請先貼上支援的文章網址（需包含 /article/）');
+          return;
+        }
+        openUrlInNewTab(ui, url);
+      });
+
+      ui.customUrlInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          ui.openUrlBtn.click();
+        }
+      });
+    }
+
+    const tab = await getCurrentPageInfo(ui);
+    if (!tab || !tab.url) {
+      return;
+    }
+
+    const eligibility = evaluatePage(tab.url);
+    if (!eligibility.canAnalyze) {
+      showFallback(ui, eligibility.title, eligibility.message);
+      return;
+    }
+
+    await attemptAutoLaunch(ui);
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialize);
   } else {
-    // DOM 已經載入完成
     initialize();
   }
 })();

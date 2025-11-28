@@ -15,6 +15,40 @@ export class UI {
   }
 
   /**
+   * 數字動畫效果
+   * @param {HTMLElement} element - 目標元素
+   * @param {number} start - 起始值
+   * @param {number} end - 結束值
+   * @param {number} duration - 動畫持續時間 (ms)
+   */
+  animateValue(element, start, end, duration) {
+    if (start === end) return;
+    const range = end - start;
+    let current = start;
+    const increment = end > start ? 1 : -1;
+    const stepTime = Math.abs(Math.floor(duration / range));
+
+    // 如果數值差異太大，調整步長以確保動畫流暢
+    const maxSteps = 60; // 60fps * 1s
+    const actualSteps = Math.min(Math.abs(range), maxSteps);
+    const stepValue = range / actualSteps;
+
+    let step = 0;
+    const timer = setInterval(() => {
+      step++;
+      current = Math.round(start + (stepValue * step));
+
+      // 確保最後一步精確
+      if (step >= actualSteps) {
+        current = end;
+        clearInterval(timer);
+      }
+
+      element.textContent = current;
+    }, duration / actualSteps);
+  }
+
+  /**
    * 設定當前語言
    * @param {string} language - 語言代碼 ('zh-TW' 或 'en')
    */
@@ -24,13 +58,22 @@ export class UI {
   }
 
   // === 基礎 UI 功能 ===
-  
+
   /**
    * 顯示/隱藏載入中覆蓋層
    * @param {boolean} show
    */
-  showLoading(show) {
-    this.base.showLoading(show);
+  showLoading(show, message = null, progress = null) {
+    this.base.showLoading(show, message, progress);
+  }
+
+  /**
+   * 更新載入進度文案
+   * @param {string|null} message
+   * @param {number|null} progress
+   */
+  setLoadingStatus(message, progress = null) {
+    this.base.setLoadingStatus(message, progress);
   }
 
   /**
@@ -52,7 +95,7 @@ export class UI {
   }
 
   // === 頁面資訊功能 ===
-  
+
   /**
    * 格式化關鍵字列表
    * @param {string} focusKeyword - 焦點關鍵字
@@ -90,7 +133,7 @@ export class UI {
   }
 
   // === 分析結果功能 ===
-  
+
   /**
    * 渲染分析結果
    * @param {Object} analysisResult
@@ -100,13 +143,13 @@ export class UI {
   }
 
   // === 默認檢測項目 ===
-  
+
   /**
    * 渲染默認檢測項目
    */
   renderDefaultAssessments() {
     const container = document.getElementById('assessmentsContainer');
-    
+
     container.innerHTML = `
       <div class="assessment-group">
         <h4>SEO 檢測項目</h4>
@@ -177,7 +220,7 @@ export class UI {
   getSelectedAssessments() {
     const container = document.getElementById('assessmentsContainer');
     if (!container) return [];
-    
+
     const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
     return Array.from(checkboxes).map(cb => cb.value);
   }

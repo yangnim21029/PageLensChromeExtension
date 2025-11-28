@@ -12,11 +12,12 @@ class PageLensAnalyzer {
     this.api = new PageLensAPI();
     this.ui = new UI();
     this.wordpress = new WordPress();
-    
+
     // 初始化狀態
     this.pageData = null;
     this.analysisResult = null;
-    
+    this.pendingDeepLinkAction = null;
+
     this.init();
   }
 
@@ -24,21 +25,21 @@ class PageLensAnalyzer {
     try {
       // 初始化 header 滾動效果
       this.initHeaderScrollEffect();
-      
+
       // 從 Chrome storage 載入頁面資料
       const result = await chrome.storage.local.get(['analysisData']);
       if (result.analysisData) {
         this.pageData = result.analysisData;
         console.log('載入頁面資料:', this.pageData);
-        
+
         // 顯示頁面資訊
         this.ui.renderPageInfo(this.pageData);
-        
+
         // 顯示 HTML 元素分析
         if (this.pageData.html) {
           this.ui.renderHtmlElements(this.pageData.html);
         }
-        
+
         // 檢查是否為 WordPress 站點，如果是則自動分析
         if (this.pageData.url && this.wordpress.isSupportedSite(this.pageData.url)) {
           console.log('檢測到 WordPress 站點，自動開始分析...');
@@ -47,10 +48,10 @@ class PageLensAnalyzer {
           if (customUrlInput) {
             customUrlInput.value = this.pageData.url;
           }
-          
+
           // 顯示自動分析提示
           this.ui.showToast('檢測到 WordPress 文章，正在自動分析...', 'info');
-          
+
           // 延遲一下讓 UI 渲染完成後再開始分析
           setTimeout(() => {
             this.analyzeCustomUrl();
@@ -69,10 +70,16 @@ class PageLensAnalyzer {
         });
         this.ui.renderHtmlElements('<p>無內容</p>');
       }
-      
+
+      // 初始化標籤頁
+      this.initTabs();
+
       // 綁定事件監聽器
       this.bindEventListeners();
-      
+
+      // 處理 Deep Linking (來自 Popup 的快速操作)
+      this.handleDeepLinking();
+
     } catch (error) {
       console.error('初始化失敗:', error);
       this.ui.showError('初始化失敗: ' + error.message);
@@ -88,13 +95,13 @@ class PageLensAnalyzer {
 
     const updateHeader = () => {
       const scrollY = window.scrollY;
-      
+
       if (scrollY > 50) {
         header.classList.add('scrolled');
       } else {
         header.classList.remove('scrolled');
       }
-      
+
       ticking = false;
     };
 
@@ -120,12 +127,131 @@ class PageLensAnalyzer {
     window.addEventListener('scroll', onScroll, { passive: true });
   }
 
+  /**
+   * 初始化標籤頁
+   */
+  initTabs() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const contentWrapper = document.getElementById('contentWrapper');
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabId = btn.dataset.tab;
+        this.switchTab(tabId);
+      });
+    });
+  }
+
+  /**
+   * 切換標籤頁
+   */
+  switchTab(tabId) {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const contentWrapper = document.getElementById('contentWrapper');
+
+    // 更新按鈕狀態
+    tabBtns.forEach(btn => {
+      if (btn.dataset.tab === tabId) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    // 更新內容顯示
+    if (tabId === 'url') {
+      contentWrapper.classList.add('tab-url-mode');
+      this.switchPanelSection('settings');
+    } else {
+      contentWrapper.classList.remove('tab-url-mode');
+      this.switchPanelSection('results');
+    }
+  }
+
+  /**
+   * 切換右側面板分頁
+   */
+  switchPanelSection(panelId) {
+    // 簡化設計後僅保留單一面板，函數保持兼容
+    return panelId;
+  }
+
+  /**
+   * 處理 Deep Linking
+   */
+  handleDeepLinking() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const action = urlParams.get('action');
+
+    if (!action || action === 'all') return;
+
+    this.pendingDeepLinkAction = action;
+
+    // 預先切換到結果分頁，待分析完成後再進行篩選
+    this.switchPanelSection('results');
+
+    // 如果結果已經存在，立即應用篩選；否則在分析完成後應用
+    this.applyDeepLinkActionIfNeeded();
+  }
+
+  /**
+   * 套用來自 Popup 的 Deep Link 動作
+   */
+  applyDeepLinkActionIfNeeded(actionOverride = null) {
+    const action = actionOverride || this.pendingDeepLinkAction;
+    if (!action) return;
+
+    const resultsContainer = document.getElementById('resultsContainer');
+    if (!resultsContainer || !resultsContainer.classList.contains('show')) {
+      return;
+    }
+
+    const filterMap = {
+      keywords: 'keywords',
+      readability: 'readability',
+      suggestions: 'suggestions',
+      seo: 'all'
+    };
+
+    const messages = {
+      keywords: '已聚焦關鍵字相關問題',
+      readability: '已聚焦可讀性改善',
+      suggestions: '只顯示需要改進的項目',
+      seo: '已跳至分析結果'
+    };
+
+    this.switchPanelSection('results');
+    resultsContainer.scrollIntoView({ behavior: 'smooth' });
+
+    const filterType = filterMap[action] || 'all';
+    if (this.ui.filterResults) {
+      this.ui.filterResults(filterType);
+    }
+
+    if (messages[action]) {
+      this.ui.showToast(messages[action], 'info');
+    }
+
+    this.pendingDeepLinkAction = null;
+  }
+
+  /**
+   * 切換至結果分頁並隱藏空狀態
+   */
+  revealResultsPanel() {
+    const emptyState = document.getElementById('resultsEmptyState');
+    if (emptyState) {
+      emptyState.style.display = 'none';
+    }
+    this.switchPanelSection('results');
+  }
+
   populateForm() {
     if (!this.pageData) return;
-    
+
     const urlInput = document.getElementById('urlInput');
     urlInput.value = this.pageData.url || '';
-    
+
     // 設定關鍵字
     const focusKeyword = document.getElementById('focusKeyword');
     if (this.pageData.focusKeyword) {
@@ -144,10 +270,10 @@ class PageLensAnalyzer {
         this.ui.renderDefaultAssessments();
         return;
       }
-      
+
       // 由於新 API 沒有 assessments 端點，直接使用預設檢測項目
       this.ui.renderDefaultAssessments();
-      
+
     } catch (error) {
       console.error('載入檢測項目失敗:', error);
       this.ui.showError('無法連接到 PageLens API 服務，請檢查網路連接');
@@ -157,24 +283,24 @@ class PageLensAnalyzer {
 
   async tryFetchWordPressKeywords() {
     if (!this.pageData || !this.pageData.url) return;
-    
+
     // 如果不是支援的站點，直接跳過
     if (!this.wordpress.isSupportedSite(this.pageData.url)) {
       console.log('非 WordPress 站點，跳過關鍵字獲取');
       return;
     }
-    
+
     try {
       // 設定超時時間為 3 秒
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('獲取關鍵字超時')), 3000)
       );
-      
+
       const fetchPromise = this.wordpress.fetchKeywordsFromWordPress(this.pageData.url);
-      
+
       // 使用 Promise.race 實現超時控制
       const result = await Promise.race([fetchPromise, timeoutPromise]);
-      
+
       // 處理新的返回格式
       if (result && result.keywords && result.keywords.length > 0) {
         const focusKeyword = document.getElementById('focusKeyword');
@@ -201,7 +327,7 @@ class PageLensAnalyzer {
     if (analyzeUrlBtn) {
       analyzeUrlBtn.addEventListener('click', () => this.analyzeCustomUrl());
     }
-    
+
     // Enter 鍵提交 URL
     const customUrlInput = document.getElementById('customUrlInput');
     if (customUrlInput) {
@@ -210,14 +336,19 @@ class PageLensAnalyzer {
           this.analyzeCustomUrl();
         }
       });
+
+      // 即時驗證網址格式
+      ['input', 'blur'].forEach(eventName => {
+        customUrlInput.addEventListener(eventName, () => this.validateCustomUrlInput());
+      });
     }
-    
+
     // 使用說明按鈕
     const helpBtn = document.getElementById('helpBtn');
     if (helpBtn) {
       helpBtn.addEventListener('click', () => this.showHelpModal());
     }
-    
+
     // 語言選擇器
     const languageSelector = document.getElementById('languageSelector');
     if (languageSelector) {
@@ -229,17 +360,57 @@ class PageLensAnalyzer {
         }
       });
     }
-    
-    // 儲存和捨棄按鈕
-    const saveBtn = document.getElementById('saveBtn');
-    const discardBtn = document.getElementById('discardBtn');
-    
-    if (saveBtn) {
-      saveBtn.addEventListener('click', () => this.saveReport());
+
+    // 重新整理按鈕
+    const refreshBtn = document.getElementById('refreshPageBtn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => this.refreshPage());
     }
-    if (discardBtn) {
-      discardBtn.addEventListener('click', () => this.discardReport());
+  }
+
+  refreshPage() {
+    const refreshBtn = document.getElementById('refreshPageBtn');
+    const contentWrapper = document.getElementById('contentWrapper');
+    const customUrlInput = document.getElementById('customUrlInput');
+    const customUrl = customUrlInput ? customUrlInput.value.trim() : '';
+    const isUrlMode = contentWrapper?.classList.contains('tab-url-mode');
+
+    if (refreshBtn) {
+      refreshBtn.classList.add('refreshing');
+      refreshBtn.disabled = true;
     }
+
+    const finish = () => {
+      if (refreshBtn) {
+        refreshBtn.classList.remove('refreshing');
+        refreshBtn.disabled = false;
+      }
+    };
+
+    // 依模式觸發對應分析，避免重整後資料消失
+    const runRefresh = async () => {
+      // 若使用者正在輸入或查看 WordPress URL，優先重跑 URL 分析
+      if (isUrlMode && customUrl) {
+        await this.analyzeCustomUrl();
+        return;
+      }
+
+      // 若有自訂 URL 且屬於支援站點，也直接重跑 URL 分析
+      if (customUrl && this.wordpress.isSupportedSite(customUrl)) {
+        await this.analyzeCustomUrl();
+        return;
+      }
+
+      // 否則重跑當前頁面的分析
+      await this.performAnalysis();
+    };
+
+    runRefresh()
+      .catch((error) => {
+        console.error('重新整理分析失敗:', error);
+        this.ui.showError('重新整理失敗: ' + error.message, true);
+      })
+      .finally(finish);
   }
 
   async performAnalysis() {
@@ -247,18 +418,20 @@ class PageLensAnalyzer {
       this.ui.showError('沒有頁面資料可供分析', true);
       return;
     }
-    
+
     try {
-      this.ui.showLoading(true);
-      
+      this.ui.results.showSkeleton?.();
+      this.ui.showLoading(true, '正在整理頁面內容...', 20);
+
       // 準備分析請求
       const analysisRequest = this.prepareAnalysisRequest();
-      
+      this.ui.setLoadingStatus('驗證檢測配置...', 35);
+
       // 設定 UI 語言（從選擇器獲取，預設中文）
       const languageSelector = document.getElementById('languageSelector');
       const language = languageSelector ? languageSelector.value : 'zh-TW';
       this.ui.setLanguage(language);
-      
+
       // 調試：查看請求內容
       console.log('=== 分析請求詳情 ===');
       console.log('頁面 URL:', analysisRequest.pageDetails.url);
@@ -266,25 +439,25 @@ class PageLensAnalyzer {
       console.log('HTML 內容長度:', analysisRequest.htmlContent?.length || 0);
       console.log('HTML 內容是否存在:', !!analysisRequest.htmlContent);
       console.log('HTML 內容開頭:', analysisRequest.htmlContent?.substring(0, 200) || '無');
-      
+
       // 顯示 HTML 大小信息
       if (analysisRequest.htmlContent) {
         const htmlSize = new Blob([analysisRequest.htmlContent]).size;
         const sizeInMB = (htmlSize / (1024 * 1024)).toFixed(2);
         console.log(`HTML 內容大小: ${sizeInMB} MB`);
-        
+
         if (htmlSize > 5 * 1024 * 1024) {
           console.warn('HTML 內容較大，API 處理可能需要更多時間');
         }
       } else {
         console.error('❌ HTML 內容為空！');
       }
-      
+
       console.log('焦點關鍵字:', analysisRequest.focusKeyword || '無');
       console.log('相關關鍵字:', analysisRequest.relatedKeywords || '無');
       console.log('語言設定:', analysisRequest.pageDetails.language);
       console.log('檢測配置:', analysisRequest.options.assessmentConfig);
-      
+
       const isWordPressSite = this.wordpress.isSupportedSite(this.pageData.url);
       if (isWordPressSite) {
         console.log('WordPress 站點模式 (extractMainContent: true) - 使用內容萃取');
@@ -293,7 +466,7 @@ class PageLensAnalyzer {
         console.log('內容選擇器:', analysisRequest.options.contentSelectors);
         console.log('排除選擇器:', analysisRequest.options.excludeSelectors);
       }
-      
+
       // 調試：檢查完整的請求物件
       console.log('完整請求物件:', JSON.stringify({
         htmlContent: analysisRequest.htmlContent ? `[${analysisRequest.htmlContent.length} chars]` : null,
@@ -302,10 +475,12 @@ class PageLensAnalyzer {
         relatedKeywords: analysisRequest.relatedKeywords,
         options: analysisRequest.options
       }, null, 2));
-      
+
+      this.ui.setLoadingStatus('正在分析中，請稍候...', 55);
+
       // 發送分析請求
       const result = await this.api.analyzePage(analysisRequest);
-      
+
       // 調試：查看回應
       console.log('=== API 回應詳情 ===');
       console.log('API 回應狀態:', result.success);
@@ -314,7 +489,7 @@ class PageLensAnalyzer {
       if (result.report?.detailedIssues?.length > 0) {
         console.log('前 3 個檢測項目:', result.report.detailedIssues.slice(0, 3));
       }
-      
+
       // API v2.0 新增的回應信息
       if (result.processingTime) {
         console.log('處理時間:', result.processingTime, 'ms');
@@ -322,14 +497,17 @@ class PageLensAnalyzer {
       if (result.apiVersion) {
         console.log('API 版本:', result.apiVersion);
       }
-      
+
       if (result.success) {
+        this.ui.setLoadingStatus('整理分析結果...', 85);
         this.analysisResult = result.report;
         this.ui.renderAnalysisResults(this.analysisResult);
+        this.revealResultsPanel();
+        this.applyDeepLinkActionIfNeeded();
       } else {
         throw new Error(result.error || '分析失敗');
       }
-      
+
     } catch (error) {
       console.error('分析失敗:', error);
       this.ui.showError('分析失敗: ' + error.message, true);
@@ -338,29 +516,102 @@ class PageLensAnalyzer {
     }
   }
 
-  async analyzeCustomUrl() {
+  /**
+   * 即時驗證自訂網址並顯示提示
+   */
+  validateCustomUrlInput(showToast = false) {
     const customUrlInput = document.getElementById('customUrlInput');
+    const feedback = document.getElementById('urlFeedback');
+
+    if (!customUrlInput || !feedback) {
+      return { isValid: false, url: '' };
+    }
+
     const url = customUrlInput.value.trim();
-    
-    // 驗證 URL
+    if (!url) {
+      feedback.className = 'inline-feedback error';
+      feedback.textContent = '請輸入要分析的網址';
+      if (showToast) {
+        this.ui.showError('請輸入要分析的網址', true);
+      }
+      customUrlInput.classList.remove('invalid');
+      return { isValid: false, url: '' };
+    }
+
     const validation = this.wordpress.validateUrl(url);
     if (!validation.isValid) {
-      this.ui.showError(validation.error, true);  // 使用 toast 通知
-      return;
+      feedback.className = 'inline-feedback error';
+      feedback.textContent = validation.error;
+      customUrlInput.classList.add('invalid');
+      if (showToast) {
+        this.ui.showError(validation.error, true);
+      }
+      return { isValid: false, url };
     }
-    
+
+    // 進一步檢查支援的站點與路徑
     try {
-      this.ui.showLoading(true);
-      
+      const supportedSites = this.wordpress.getSupportedSites();
+      const urlObj = new URL(url);
+      const hostname = urlObj.hostname;
+      const pathname = urlObj.pathname;
+
+      // 支援的主機但不是文章頁
+      if (supportedSites.includes(hostname) && !pathname.includes('/article/')) {
+        const message = '請輸入文章頁面網址（需包含 /article/）';
+        feedback.className = 'inline-feedback error';
+        feedback.innerHTML = `❌ ${message}`;
+        customUrlInput.classList.add('invalid');
+        if (showToast) {
+          this.ui.showError(message, true);
+        }
+        return { isValid: false, url };
+      }
+
+      // 不支援的主機
+      if (!supportedSites.includes(hostname)) {
+        const message = `目前僅支援 PressLogic/WordPress 網域，偵測到 ${hostname}`;
+        feedback.className = 'inline-feedback error';
+        feedback.innerHTML = `❌ ${message}`;
+        customUrlInput.classList.add('invalid');
+        if (showToast) {
+          this.ui.showError(message, true);
+        }
+        return { isValid: false, url };
+      }
+
+      // 皆符合
+      feedback.className = 'inline-feedback success';
+      feedback.innerHTML = `
+        <span class="pill">✔ 格式正確</span>
+        <span>${hostname} /article/</span>
+      `;
+      customUrlInput.classList.remove('invalid');
+
+      return { isValid: true, url };
+    } catch (error) {
+      console.warn('URL 解析失敗:', error);
+      return { isValid: false, url };
+    }
+  }
+
+  async analyzeCustomUrl() {
+    const { isValid, url } = this.validateCustomUrlInput(true);
+    if (!isValid) return;
+
+    try {
+      this.ui.results.showSkeleton?.();
+      this.ui.showLoading(true, '正在驗證網址格式...', 20);
+
       // 設定 UI 語言（從選擇器獲取，預設中文）
       const languageSelector = document.getElementById('languageSelector');
       const language = languageSelector ? languageSelector.value : 'zh-TW';
       this.ui.setLanguage(language);
-      
+
       // 檢查是否為支持的 WordPress 站點
       if (!this.wordpress.isSupportedSite(url)) {
         const supportedSites = this.wordpress.getSupportedSites();
-        
+
         // 檢查是否為支援的網域但不是文章頁
         const hostname = new URL(url).hostname;
         if (supportedSites.includes(hostname)) {
@@ -369,41 +620,48 @@ class PageLensAnalyzer {
           throw new Error(`目前僅支援 WordPress/PressLogic 站點的文章頁面分析。支援的站點包括：${supportedSites.join(', ')}`);
         }
       }
-      
+
+      this.ui.setLoadingStatus('組裝分析請求...', 45);
+
       // 準備分析請求
       const analysisRequest = this.wordpress.prepareAnalysisRequest(url);
-      
+
+      this.ui.setLoadingStatus('正在分析中，請稍候...', 65);
+
       // 發送到新的 WordPress URL 分析端點
       const result = await this.api.analyzeWordPressUrl(analysisRequest);
-      
+
       if (result.success) {
+        this.ui.setLoadingStatus('整理分析結果...', 85);
         this.analysisResult = result.report;
-        
+
         // 調試：查看 API 返回的數據結構
         console.log('API 返回數據:', result);
         console.log('WordPress 數據:', result.wordpressData);
         console.log('頁面理解資訊:', result.pageUnderstanding);
-        
+
         // 更新左側面板顯示 WordPress 數據
         const wordpressData = this.wordpress.formatWordPressData(url, result.wordpressData);
         this.ui.renderPageInfo(wordpressData);
-        
+
         // 對於 WordPress URL 分析，顯示簡化的 HTML 結構信息
         // 傳遞 pageUnderstanding 資料（如果有的話）
         this.ui.renderWordPressHtmlInfo(result.wordpressData, result.pageUnderstanding);
-        
+
         // 更新右側面板顯示分析結果
         this.ui.renderAnalysisResults(this.analysisResult);
-        
+        this.revealResultsPanel();
+        this.applyDeepLinkActionIfNeeded();
+
         // 保留輸入框中的網址，方便用戶重新分析或修改
         // customUrlInput.value = '';  // 移除清空輸入框的程式碼
-        
+
         this.ui.showToast('URL 分析完成', 'success');
-        
+
       } else {
         throw new Error(result.error || '分析失敗');
       }
-      
+
     } catch (error) {
       console.error('自定義 URL 分析失敗:', error);
       this.ui.showError('分析失敗: ' + error.message, true);
@@ -415,24 +673,24 @@ class PageLensAnalyzer {
   prepareAnalysisRequest() {
     let focusKeyword = document.getElementById('focusKeyword').value.trim();
     let relatedKeywords = [];
-    
+
     // 特殊規則：如果關鍵字是 xxx-xxx2-xxx3 格式，分割成焦點和相關關鍵字
     if (focusKeyword && focusKeyword.includes('-')) {
       const parts = focusKeyword.split('-').map(k => k.trim());
       focusKeyword = parts[0];
       relatedKeywords = parts.slice(1);
     }
-    
+
     const language = 'zh'; // 目前固定為中文
     const selectedAssessments = this.getSelectedAssessments();
-    
+
     // 判斷是否為支援的 WordPress 站點
     const isWordPressSite = this.wordpress.isSupportedSite(this.pageData.url);
-    
+
     const options = {
       assessmentConfig: selectedAssessments
     };
-    
+
     if (isWordPressSite) {
       // WordPress 站點使用內容萃取
       options.extractMainContent = true;
@@ -441,7 +699,7 @@ class PageLensAnalyzer {
       options.contentSelectors = ['article', 'main', '.content'];
       options.excludeSelectors = ['.ad', '.sidebar'];
     }
-    
+
     return {
       htmlContent: this.pageData.html,
       pageDetails: {
@@ -459,65 +717,28 @@ class PageLensAnalyzer {
   getSelectedAssessments() {
     // 使用 UI 模組的方法來獲取選中的項目（支援新舊兩種方式）
     const assessments = this.ui.getSelectedAssessments();
-    
+
     // 如果有選擇特定檢測項目，使用選擇的項目
     if (assessments.length > 0) {
       return { enabledAssessments: assessments };
     }
-    
+
     // 如果沒有選擇任何項目，啟用所有檢測 (根據 API 文檔)
-    return { 
+    return {
       enableAllSEO: true,
       enableAllReadability: true
     };
   }
 
 
-  saveReport() {
-    if (!this.analysisResult) {
-      this.ui.showError('沒有分析結果可以儲存', true);
-      return;
-    }
-    
-    const report = {
-      url: this.pageData.url,
-      title: this.pageData.title,
-      exportTimestamp: new Date().toISOString(),
-      analysisTimestamp: this.analysisResult.timestamp,
-      overallScores: this.analysisResult.overallScores,
-      summary: this.analysisResult.summary,
-      detailedIssues: this.analysisResult.detailedIssues,
-      processingTime: this.analysisResult.processingTime || 0
-    };
-    
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `pagelens-report-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    
-    URL.revokeObjectURL(url);
-    
-    this.ui.showToast('報告已儲存', 'success');
-  }
-
-  discardReport() {
-    if (confirm('確定要捨棄此報告？')) {
-      chrome.tabs.getCurrent((tab) => {
-        chrome.tabs.remove(tab.id);
-      });
-    }
-  }
-
   showHelpModal() {
-    // 打開新分頁顯示說明頁面
+    // 直接以新分頁開啟說明（外部連結或 README）
     chrome.tabs.create({
-      url: chrome.runtime.getURL('help.html'),
+      url: 'https://docs.google.com/presentation/d/19W7ib6VGXHYqBHgyYbIXQbtUGGvcrBlC4OGdTKJHNc8/edit?usp=sharing',
       active: true
     });
   }
+
 }
 
 // 初始化分析器

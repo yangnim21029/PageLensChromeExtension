@@ -5,6 +5,11 @@
 export class UIBase {
   constructor() {
     this.loadingOverlay = document.getElementById('loadingOverlay');
+    this.loadingMessage = document.getElementById('loadingMessage');
+    this.loadingSubtext = document.getElementById('loadingSubtext');
+    if (this.loadingSubtext) {
+      this.loadingSubtext.dataset.defaultText = this.loadingSubtext.textContent || '';
+    }
     this.errorMessage = document.getElementById('errorMessage');
     this.errorText = document.getElementById('errorText');
     this.toastContainer = document.getElementById('toastContainer');
@@ -14,8 +19,26 @@ export class UIBase {
    * 顯示/隱藏載入中覆蓋層
    * @param {boolean} show
    */
-  showLoading(show) {
+  showLoading(show, message = null, progress = null) {
+    if (message || typeof progress === 'number') {
+      this.setLoadingStatus(message, progress);
+    }
     this.loadingOverlay.style.display = show ? 'flex' : 'none';
+  }
+
+  /**
+   * 更新載入中文案與進度
+   * @param {string|null} message
+   * @param {number|null} progress 0-100
+   */
+  setLoadingStatus(message, progress = null) {
+    if (message && this.loadingMessage) {
+      this.loadingMessage.textContent = message;
+    }
+    const subtextText = this.loadingSubtext?.dataset?.defaultText || this.loadingSubtext?.textContent || '';
+    if (this.loadingSubtext) {
+      this.loadingSubtext.textContent = subtextText;
+    }
   }
 
   /**

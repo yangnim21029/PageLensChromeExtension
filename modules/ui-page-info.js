@@ -3,7 +3,12 @@
  * 處理頁面基本資訊和 HTML 元素分析的顯示
  */
 export class UIPageInfo {
-  constructor() {}
+  constructor() {
+    this.originalHtmlElementsContent = '';
+    this.lastExtractedHeadings = [];
+    // 暫停使用從頁面直接抓取的 HTML，等待抓取策略調整
+    this.disablePageHtml = true;
+  }
 
   /**
    * 格式化關鍵字列表
@@ -14,19 +19,19 @@ export class UIPageInfo {
    */
   formatKeywords(focusKeyword, keywords, relatedKeywords) {
     let keywordList = [];
-    
+
     // 如果有焦點關鍵字，放在第一個
     if (focusKeyword) {
       keywordList.push(focusKeyword + ' (焦點)');
     }
-    
+
     // 如果有相關關鍵字（從焦點關鍵字分割出來的）
     if (relatedKeywords && relatedKeywords.length > 0) {
       relatedKeywords.forEach(kw => {
         keywordList.push(kw + ' (相關)');
       });
     }
-    
+
     // 處理其他關鍵字
     if (keywords) {
       if (typeof keywords === 'string') {
@@ -41,16 +46,32 @@ export class UIPageInfo {
         keywordList.push(...additionalKeywords);
       }
     }
-    
+
     // 如果沒有任何關鍵字
     if (keywordList.length === 0) {
       return '無';
     }
-    
+
     // 使用 - 分行顯示
     return keywordList.map((keyword, index) => {
       return `${index === 0 ? '' : '- '}${keyword}`;
     }).join('<br>');
+  }
+
+  /**
+   * 安全解碼 URL 供顯示使用
+   */
+  safeDecodeUrl(url) {
+    if (!url) return '';
+    try {
+      return decodeURIComponent(url);
+    } catch (e) {
+      try {
+        return decodeURI(url);
+      } catch {
+        return url;
+      }
+    }
   }
 
   /**
@@ -59,19 +80,17 @@ export class UIPageInfo {
    */
   renderPageInfo(pageData) {
     const container = document.getElementById('pageInfoContainer');
-    
+    const displayUrl = pageData.url ? this.safeDecodeUrl(pageData.url) : '無 URL';
+    // Meta image 已暫停顯示
+
     container.innerHTML = `
       <div class="info-item">
-        <h4>頁面標題</h4>
+        <h4>Meta Title</h4>
         <div class="value">${pageData.title || '無標題'}</div>
-      </div>
-      <div class="info-item">
-        <h4>頁面 URL</h4>
-        <div class="value">${pageData.url || '無 URL'}</div>
       </div>
       ${pageData.description ? `
       <div class="info-item">
-        <h4>頁面描述</h4>
+        <h4>Meta Description</h4>
         <div class="value">${pageData.description}</div>
       </div>
       ` : ''}
@@ -86,6 +105,16 @@ export class UIPageInfo {
         <div class="value">${new Date().toLocaleString('zh-TW')}</div>
       </div>
     `;
+
+    // 同步結果卡片上的頁面 URL
+    const resultsUrlEl = document.getElementById('resultsPageUrl');
+    if (resultsUrlEl) {
+      resultsUrlEl.textContent = displayUrl;
+      resultsUrlEl.href = displayUrl;
+      resultsUrlEl.setAttribute('title', displayUrl);
+    }
+
+
   }
 
   /**
@@ -95,9 +124,13 @@ export class UIPageInfo {
    */
   renderWordPressHtmlInfo(wordpressData, pageUnderstanding) {
     const container = document.getElementById('htmlElementsContainer');
-    
+    const useBaseContent = !this.disablePageHtml;
+    const baseContent = useBaseContent
+      ? (this.originalHtmlElementsContent || container.innerHTML || '')
+      : (wordpressData || pageUnderstanding ? '' : (this.originalHtmlElementsContent || container.innerHTML || ''));
+
     if (!wordpressData && !pageUnderstanding) {
-      container.innerHTML = `
+      container.innerHTML = baseContent || `
         <div class="info-item">
           <p style="text-align: center; color: var(--text-secondary);">
             WordPress URL 分析模式<br>
@@ -107,20 +140,20 @@ export class UIPageInfo {
       `;
       return;
     }
-    
+
     // 準備顯示內容
     let htmlContent = '';
-    
+
     // 頁面理解資訊 (API v2.0 新功能)
     if (pageUnderstanding) {
       htmlContent += this.renderPageUnderstanding(pageUnderstanding);
     }
-    
+
     // WordPress 特定資訊
     if (wordpressData) {
       htmlContent += this.renderWordPressInfo(wordpressData);
     }
-    
+
     // 提示訊息
     htmlContent += `
       <div class="info-item" style="background: var(--color-background); border: 1px dashed var(--border-light);">
@@ -130,66 +163,182 @@ export class UIPageInfo {
         </p>
       </div>
     `;
-    
-    container.innerHTML = htmlContent;
+
+    // 將 WordPress 資訊附加在原有 HTML 元素分析之後，不覆蓋 (若暫停 HTML 抓取則不附加 base)
+    container.innerHTML = `${baseContent}${htmlContent}`;
   }
 
   /**
    * 渲染頁面理解資訊
    */
   renderPageUnderstanding(pageUnderstanding) {
+    const headingStructure = pageUnderstanding?.headingStructure || {};
+
+    // H1 文字
+    const h1Text = (headingStructure.h1Text || '').toString().trim();
+
+    // H2 清單：優先使用 h2Headings (含 tag/text/order)，其次 h2Texts
+    const h2List = (() => {
+      if (Array.isArray(headingStructure.h2Headings)) {
+        return headingStructure.h2Headings
+          .map(h => (typeof h === 'string' ? { text: h } : h))
+          .map(h => ({
+            tag: 'H2',
+            text: (h.text || h.content || h.title || h.heading || h.headingText || '').toString().trim(),
+            order: h.order
+          }))
+          .filter(h => h.text);
+      }
+      if (Array.isArray(headingStructure.h2Texts)) {
+        return headingStructure.h2Texts
+          .map(text => ({ tag: 'H2', text: (text || '').toString().trim() }))
+          .filter(h => h.text);
+      }
+      return [];
+    })();
+
+    // 全部標題 (含層級與順序) — 若 API 已提供完整列表，優先使用避免重複
+    const normalizedHeadings = Array.isArray(headingStructure.headings)
+      ? headingStructure.headings.map(h => ({
+        tag: (h.tag || h.tagName || h.type || '').toString().toUpperCase() || (h.level ? `H${h.level}` : 'H?'),
+        text: (h.text || h.content || h.title || h.heading || '').toString().trim(),
+        level: h.level,
+        order: h.order
+      })).filter(h => h.text)
+      : [];
+
+    const headingList = normalizedHeadings.length
+      ? normalizedHeadings
+      : [
+          ...(h1Text ? [{ tag: 'H1', text: h1Text, order: 0 }] : []),
+          ...h2List
+        ];
+
+    const h1Count = typeof headingStructure.h1Count === 'number'
+      ? headingStructure.h1Count
+      : (h1Text ? 1 : headingList.filter(h => (h.tag || '').toUpperCase() === 'H1').length);
+
+    const h2Count = typeof headingStructure.h2Count === 'number'
+      ? headingStructure.h2Count
+      : headingList.filter(h => (h.tag || '').toUpperCase() === 'H2').length;
+
+    const totalHeadings = typeof headingStructure.totalHeadings === 'number'
+      ? headingStructure.totalHeadings
+      : headingList.length;
+
+    // Alt 文字
+    const mediaInfo = pageUnderstanding?.mediaInfo || {};
+    const linkInfo = pageUnderstanding?.linkInfo || {};
+    const altTexts = Array.isArray(mediaInfo.altTexts)
+      ? mediaInfo.altTexts
+      : Array.isArray(mediaInfo.imagesWithAlt)
+        ? mediaInfo.imagesWithAlt.map(img => img.alt).filter(Boolean)
+        : [];
+
+    // 內部連結列表
+    const allLinks = Array.isArray(linkInfo.allLinks)
+      ? linkInfo.allLinks.map(link => ({
+        href: link.href || link.url || '',
+        text: (link.text || link.title || '').toString().trim(),
+        isExternal: !!link.isExternal,
+        isNoFollow: !!link.isNoFollow,
+        isUGC: !!link.isUGC,
+        isSponsored: !!link.isSponsored,
+        rel: link.rel,
+        target: link.target
+      })).filter(l => l.href)
+      : [];
+
+    const internalLinks = allLinks.length
+      ? allLinks.filter(link => !link.isExternal)
+      : (Array.isArray(linkInfo.internalLinkList) ? linkInfo.internalLinkList : []);
+
     return `
       <div class="info-item">
         <h4>📖 頁面結構分析</h4>
-        
-        ${pageUnderstanding.headingStructure ? `
-          <div style="margin-bottom: 1rem;">
-            <strong>標題結構:</strong>
-            <div style="margin-top: 0.5rem; padding-left: 1rem;">
-              <p>H1: ${pageUnderstanding.headingStructure.h1Count || 0} 個</p>
-              <p>H2: ${pageUnderstanding.headingStructure.h2Count || 0} 個</p>
-              <p>總標題數: ${pageUnderstanding.headingStructure.totalHeadings || 0} 個</p>
-            </div>
+        <div style="margin-bottom: 1rem;">
+          <strong>標題結構:</strong>
+          <div style="margin-top: 0.5rem; padding-left: 1rem;">
+            <p>H1: ${h1Count || 0} 個</p>
+            <p>H2: ${h2Count || 0} 個</p>
+            <p>總標題數: ${totalHeadings || 0} 個</p>
           </div>
-        ` : ''}
-        
-        ${pageUnderstanding.textStats ? `
+        </div>
+        ${headingList && headingList.length ? `
           <div style="margin-bottom: 1rem;">
-            <strong>文字統計:</strong>
-            <div style="margin-top: 0.5rem; padding-left: 1rem;">
-              <p>總字數: ${pageUnderstanding.wordCount || 0} 字</p>
-              <p>閱讀時間: ${pageUnderstanding.readingTime || 0} 分鐘</p>
-              <p>段落數: ${pageUnderstanding.textStats.paragraphCount || 0} 個</p>
-              <p>句子數: ${pageUnderstanding.textStats.sentenceCount || 0} 個</p>
-              <p>平均句長: ${pageUnderstanding.textStats.averageWordsPerSentence || 0} 字</p>
-            </div>
+            <strong>標題清單:</strong>
+            <ul style="margin-top: 0.5rem; padding-left: 1.25rem; line-height: 1.6;">
+              ${headingList.map(h => `
+                <li><strong>${(h.tag || '').toString().toUpperCase() || 'H?'}</strong> ${h.text || h}</li>
+              `).join('')}
+            </ul>
           </div>
-        ` : ''}
+        ` : `
+          <p style="margin: 0 0 1rem;">暫無標題清單資料，僅顯示統計數字。</p>
+        `}
         
-        ${pageUnderstanding.mediaInfo ? `
-          <div style="margin-bottom: 1rem;">
-            <strong>媒體資訊:</strong>
+        ${mediaInfo ? `
+          <details open style="margin-bottom: 1rem;">
+            <summary style="cursor: pointer;"><strong>媒體資訊</strong></summary>
             <div style="margin-top: 0.5rem; padding-left: 1rem;">
-              <p>圖片總數: ${pageUnderstanding.mediaInfo.imageCount || 0} 張</p>
-              ${pageUnderstanding.mediaInfo.imagesWithoutAlt ? `
-                <p style="color: var(--color-warning);">缺少 Alt 文字: ${pageUnderstanding.mediaInfo.imagesWithoutAlt} 張</p>
+              <p>圖片總數: ${mediaInfo.imageCount || 0} 張</p>
+              ${mediaInfo.imagesWithoutAlt ? `
+                <p style="color: var(--color-warning);">缺少 Alt 文字: ${mediaInfo.imagesWithoutAlt} 張</p>
               ` : ''}
-              ${pageUnderstanding.mediaInfo.videoCount !== undefined ? `
-                <p>影片數量: ${pageUnderstanding.mediaInfo.videoCount} 個</p>
+              ${mediaInfo.videoCount !== undefined ? `
+                <p>影片數量: ${mediaInfo.videoCount} 個</p>
               ` : ''}
+              ${altTexts.length ? `
+                <p style="margin-top: 0.5rem;">Alt 文字清單：</p>
+                <ul style="padding-left: 1.25rem; line-height: 1.6; margin-top: 0.25rem;">
+                  ${altTexts.map((alt, idx) => `
+                    <li><strong>ALT ${idx + 1}</strong> ${alt}</li>
+                  `).join('')}
+                </ul>
+              ` : ``}
             </div>
-          </div>
+          </details>
         ` : ''}
         
-        ${pageUnderstanding.linkInfo ? `
-          <div>
-            <strong>連結統計:</strong>
+        ${linkInfo ? `
+          <details open>
+            <summary style="cursor: pointer;"><strong>連結統計</strong></summary>
             <div style="margin-top: 0.5rem; padding-left: 1rem;">
-              <p>總連結數: ${pageUnderstanding.linkInfo.totalLinks || 0} 個</p>
-              <p>內部連結: ${pageUnderstanding.linkInfo.internalLinks || 0} 個</p>
-              <p>外部連結: ${pageUnderstanding.linkInfo.externalLinks || 0} 個</p>
+              <p>總連結數: ${linkInfo.totalLinks || allLinks.length || 0} 個</p>
+              <p>內部連結: ${linkInfo.internalLinks || internalLinks.length || 0} 個</p>
+              <p>外部連結: ${linkInfo.externalLinks || (allLinks.length ? allLinks.length - internalLinks.length : 0)} 個</p>
+              ${internalLinks.length ? `
+                <p style="margin-top: 0.5rem;">內部連結清單：</p>
+                <ul style="padding-left: 1.25rem; line-height: 1.6; margin-top: 0.25rem;">
+                  ${internalLinks.map(link => `
+                    <li>${
+                      link.text && link.text !== (link.href || link.url || '')
+                        ? `${link.text} — `
+                        : ''
+                    }${link.href || link.url || ''}</li>
+                  `).join('')}
+                </ul>
+              ` : ``}
+              ${allLinks.length ? `
+                <p style="margin-top: 0.75rem;">全部連結清單：</p>
+                <ul style="padding-left: 1.25rem; line-height: 1.6; margin-top: 0.25rem;">
+                  ${allLinks.map(link => `
+                    <li>
+                      ${
+                        link.text && link.text !== link.href
+                          ? `${link.text} — `
+                          : ''
+                      }${link.href}
+                      ${link.isExternal ? '<span style="color: var(--color-error);"> [外部]</span>' : '<span style="color: var(--color-success);"> [內部]</span>'}
+                      ${link.isNoFollow ? '<span style="color: var(--color-warning);"> nofollow</span>' : ''}
+                      ${link.isUGC ? '<span style="color: var(--color-warning);"> ugc</span>' : ''}
+                      ${link.isSponsored ? '<span style="color: var(--color-warning);"> sponsored</span>' : ''}
+                    </li>
+                  `).join('')}
+                </ul>
+              ` : ''}
             </div>
-          </div>
+          </details>
         ` : ''}
       </div>
     `;
@@ -211,33 +360,15 @@ export class UIPageInfo {
         ${wordpressData.extractedKeywords && wordpressData.extractedKeywords.length > 0 ? `
           <p>提取的關鍵字:</p>
           <div class="element-list">
-            ${wordpressData.extractedKeywords.map(keyword => `
+            ${wordpressData.extractedKeywords.map((keyword, index) => `
               <div class="element-item">
-                <span class="tag">關鍵字</span>
+                <span class="tag">${index === 0 ? '關鍵字' : '相關關鍵字'}</span>
                 <span class="text">${keyword}</span>
               </div>
             `).join('')}
           </div>
         ` : ''}
       </div>
-      
-      ${wordpressData.seoMetadata ? `
-      <div class="info-item">
-        <h4>SEO 元數據</h4>
-        ${wordpressData.seoMetadata.title ? `
-          <p>SEO 標題:</p>
-          <div class="value">${wordpressData.seoMetadata.title}</div>
-        ` : ''}
-        ${wordpressData.seoMetadata.description ? `
-          <p>SEO 描述:</p>
-          <div class="value">${wordpressData.seoMetadata.description}</div>
-        ` : ''}
-        ${wordpressData.seoMetadata.focusKeyphrase ? `
-          <p>焦點關鍵詞:</p>
-          <div class="value">${wordpressData.seoMetadata.focusKeyphrase}</div>
-        ` : ''}
-      </div>
-      ` : ''}
     `;
   }
 
@@ -247,88 +378,49 @@ export class UIPageInfo {
    */
   renderHtmlElements(html) {
     const container = document.getElementById('htmlElementsContainer');
+    if (this.disablePageHtml) {
+      container.innerHTML = `
+        <div class="info-item">
+          <p class="value" style="margin: 0;">
+            目前暫停顯示從頁面直接抓取的 HTML 結果，待抓取策略調整後再開啟。
+          </p>
+        </div>
+      `;
+      this.originalHtmlElementsContent = container.innerHTML;
+      this.lastExtractedHeadings = [];
+      return;
+    }
+
+    if (!html) {
+      container.innerHTML = `
+        <div class="info-item">
+          <p class="value" style="margin: 0;">暫無可用的 HTML 內容。</p>
+        </div>
+      `;
+      this.originalHtmlElementsContent = container.innerHTML;
+      this.lastExtractedHeadings = [];
+      return;
+    }
+
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    
-    // 統計各種元素
+
+    // 僅保留標題結構統計，圖片/連結列表不再顯示以避免與頁面基本資訊重複
     const elements = {
-      headings: this.extractHeadings(doc),
-      images: this.extractImages(doc),
-      links: this.extractLinks(doc),
-      meta: this.extractMeta(doc)
+      headings: this.extractHeadings(doc)
     };
-    
+
     container.innerHTML = `
       <div class="info-item">
-        <h4>標題結構 (${elements.headings.length})</h4>
-        <div class="element-list">
-          ${elements.headings.map(h => `
-            <div class="element-item">
-              <span class="tag">${h.tag}</span>
-              <span class="text">${h.text}</span>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-      
-      <div class="info-item">
-        <h4>圖片 (${elements.images.length})</h4>
-        <div class="element-list">
-          ${elements.images.slice(0, 5).map(img => `
-            <div class="element-item">
-              <span class="tag">${img.hasAlt ? 'ALT' : 'NO ALT'}</span>
-              <span class="text">${img.alt || img.src}</span>
-            </div>
-          `).join('')}
-          ${elements.images.length > 5 ? `
-            <div class="element-item">
-              <span class="text" style="color: var(--text-secondary);">...還有 ${elements.images.length - 5} 張圖片</span>
-            </div>
-          ` : ''}
-        </div>
-      </div>
-      
-      <div class="info-item">
-        <h4>連結 (${elements.links.length})</h4>
-        <div class="element-list">
-          ${elements.links.slice(0, 5).map(link => `
-            <div class="element-item">
-              <span class="tag">${link.type}</span>
-              <span class="text">${link.text || link.href}</span>
-            </div>
-          `).join('')}
-          ${elements.links.length > 5 ? `
-            <div class="element-item">
-              <span class="text" style="color: var(--text-secondary);">...還有 ${elements.links.length - 5} 個連結</span>
-            </div>
-          ` : ''}
-        </div>
-      </div>
-      
-      <div class="info-item">
-        <h4>Meta 標籤</h4>
-        <div class="element-list">
-          ${elements.meta.title ? `
-            <div class="element-item">
-              <span class="tag">Title</span>
-              <span class="text">${elements.meta.title}</span>
-            </div>
-          ` : ''}
-          ${elements.meta.description ? `
-            <div class="element-item">
-              <span class="tag">Description</span>
-              <span class="text">${elements.meta.description}</span>
-            </div>
-          ` : ''}
-          ${elements.meta.keywords ? `
-            <div class="element-item">
-              <span class="tag">Keywords</span>
-              <span class="text">${elements.meta.keywords}</span>
-            </div>
-          ` : ''}
-        </div>
+        <p class="value" style="margin: 0;">
+          HTML 元素詳細列表已整合至「📖 頁面結構分析」，圖片與連結明細不再重複顯示。
+        </p>
       </div>
     `;
+
+    // 保存原始 HTML 元素分析，供後續 WordPress 資訊附加時使用
+    this.originalHtmlElementsContent = container.innerHTML;
+    this.lastExtractedHeadings = elements.headings;
   }
 
   /**
@@ -382,14 +474,4 @@ export class UIPageInfo {
     });
   }
 
-  /**
-   * 提取 Meta 標籤
-   */
-  extractMeta(doc) {
-    return {
-      title: doc.querySelector('title')?.textContent || '',
-      description: doc.querySelector('meta[name="description"]')?.content || '',
-      keywords: doc.querySelector('meta[name="keywords"]')?.content || ''
-    };
-  }
 }

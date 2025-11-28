@@ -114,9 +114,9 @@ const assessmentTranslations = {
         recommendation: '太棒了！所有相關關鍵字都分布在 H2 標題中。'
       },
       ok: {
-        title: '沒有提供相關關鍵字',
-        description: '沒有提供相關關鍵字進行 H2 分析',
-        recommendation: '設定相關關鍵字以分析 H2 優化。'
+        title: '部分相關關鍵字缺失',
+        description: '部分相關關鍵字沒有出現在 H2 標題',
+        recommendation: '在 H2 標題加入缺少的相關關鍵字，提升覆蓋率。'
       },
       bad: {
         title: '大部分相關關鍵字缺失',
@@ -133,9 +133,9 @@ const assessmentTranslations = {
           'Excellent! All your related keywords appear in H2 headings.'
       },
       ok: {
-        title: 'Related Keywords Check Skipped',
-        description: 'No related keywords provided for H2 analysis',
-        recommendation: 'Provide related keywords to analyze H2 optimization.'
+        title: 'Some Related Keywords Missing',
+        description: 'Some related keywords are missing from H2 headings',
+        recommendation: 'Add the missing related keywords to your H2 headings.'
       },
       bad: {
         title: 'Most Related Keywords Missing',
@@ -623,6 +623,44 @@ function getAssessmentTranslation(
         description: lang.bad.tooLong?.description || lang.bad.description,
         recommendation:
           lang.bad.tooLong?.recommendation || lang.bad.recommendation
+      };
+    }
+  }
+
+  // 特殊處理 H2_SYNONYMS_MISSING，直接點出缺少的關鍵字與覆蓋率
+  if (assessmentId === 'H2_SYNONYMS_MISSING') {
+    const missingKeywords =
+      details.missingRelatedKeywords || details.missingKeywords;
+    const hasMissing =
+      Array.isArray(missingKeywords) && missingKeywords.length > 0;
+    const coverage = details.coveragePercentage;
+
+    if (hasMissing || coverage !== undefined) {
+      const keywordList = hasMissing
+        ? missingKeywords.join(language === 'zh-TW' ? '、' : ', ')
+        : '';
+      const parts = [];
+
+      if (coverage !== undefined) {
+        parts.push(
+          language === 'zh-TW'
+            ? `H2 覆蓋率 ${coverage}%`
+            : `H2 coverage ${coverage}%`
+        );
+      }
+      if (hasMissing) {
+        parts.push(
+          language === 'zh-TW'
+            ? `缺少：${keywordList}`
+            : `Missing: ${keywordList}`
+        );
+      }
+
+      return {
+        name: lang.name,
+        title: lang[statusKey]?.title || lang.bad.title,
+        description: parts.join(language === 'zh-TW' ? '；' : '; '),
+        recommendation: lang[statusKey]?.recommendation || lang.bad.recommendation
       };
     }
   }
