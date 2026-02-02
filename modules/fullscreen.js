@@ -5,6 +5,7 @@
 import { PageLensAPI } from './api.js';
 import { UI } from './ui.js';
 import { WordPress } from './wordpress.js';
+import { writingHelper } from './seo-writing-helper.js';
 
 class PageLensAnalyzer {
   constructor() {
@@ -361,13 +362,167 @@ class PageLensAnalyzer {
       });
     }
 
-    // 重新整理按鈕
     const refreshBtn = document.getElementById('refreshPageBtn');
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => this.refreshPage());
     }
+
+    // AI 建議按鈕 (事件委派)
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.ai-suggest-btn');
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const type = btn.dataset.type;
+        const contextStr = btn.dataset.context;
+        try {
+          const context = JSON.parse(contextStr);
+          await this.handleAISuggest(type, context, btn);
+        } catch (err) {
+          console.error("Context parse error", err);
+          this.ui.showError("無法解析上下文資料", true);
+        }
+      }
+    });
+
+    // 寫作小幫手按鈕 (事件委派)
+    document.addEventListener('click', (e) => {
+      const helperBtn = e.target.closest('.writing-helper-btn');
+      if (helperBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const helperType = helperBtn.dataset.helperType;
+        const contextStr = helperBtn.dataset.context;
+        try {
+          const context = JSON.parse(contextStr || '{}');
+          // 添加頁面資料到 context
+          if (this.pageData) {
+            context.title = context.title || this.pageData.title;
+            context.metaDescription = context.metaDescription || this.pageData.description;
+          }
+          writingHelper.open(helperType, context);
+        } catch (err) {
+          console.error("Writing helper context parse error", err);
+          this.ui.showError("無法開啟寫作小幫手", true);
+        }
+      }
+    });
+
+    // AI 圖片選擇 (事件委派)
+    document.addEventListener('click', (e) => {
+      const option = e.target.closest('.ai-image-option');
+      if (option) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // 切換選取狀態
+        const container = option.closest('.ai-review-container');
+        container.querySelectorAll('.ai-image-option').forEach(el => el.classList.remove('selected'));
+        option.classList.add('selected');
+
+        // 更新輸入框
+        const input = container.querySelector('.ai-review-input');
+        if (input) {
+          input.value = option.dataset.src;
+          input.dataset.selectedImg = option.dataset.src;
+        }
+      }
+    });
+
+    // AI Review 按鈕 (事件委派)
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.ai-review-btn');
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        await this.handleAIReview(btn);
+      }
+    });
+
+    // 初始化寫作小幫手
+    writingHelper.api = this.api;
+    writingHelper.init();
   }
 
+  /**
+   * 處理 AI Review 請求
+   */
+  async handleAIReview(btnElement) {
+    if (btnElement.disabled) return;
+
+    const container = btnElement.closest('.ai-review-container');
+    const input = container.querySelector('.ai-review-input');
+    const resultArea = container.querySelector('.ai-review-result');
+    const text = input.value.trim();
+
+    if (!text) {
+      this.ui.showToast('請輸入要 review 的內容', 'warning');
+      return;
+    }
+
+    const type = btnElement.dataset.assessmentId;
+    const contextStr = btnElement.dataset.context;
+
+    let task = 'rewrite';
+    let apiText = text;
+
+    if (type === 'IMAGES_MISSING_ALT') {
+      task = 'alt';
+      // If text looks like a URL (which it will if selected from list), use it as src
+      // Otherwise, the backend will treat it as text
+    } else if (type.includes('TITLE')) task = 'rewrite';
+    else if (type.includes('META')) task = 'rewrite';
+    else if (type.includes('ALT')) task = 'alt';
+    else task = 'rewrite';
+
+    // UI Loading state
+    const originalText = btnElement.innerHTML;
+    btnElement.innerHTML = '<span>⏳</span>...';
+    btnElement.disabled = true;
+    btnElement.style.opacity = '0.7';
+
+    resultArea.style.display = 'block';
+    resultArea.innerHTML = '<span>✨</span> AI 正在分析建議中...';
+
+    try {
+      const response = await this.api.callWritingAssistant({
+        task: task,
+        text: text,
+        context: contextStr,
+        language: 'zh-TW'
+      });
+
+      if (response.success) {
+        let resultHtml = `<strong>✨ AI 建議：</strong><br>${response.processedText}`;
+        if (response.explanation) {
+          resultHtml += `<br><br><small style="color: #666; font-style: italic;">💡 ${response.explanation}</small>`;
+        }
+        if (response.alternatives && response.alternatives.length > 0) {
+          resultHtml += `<div style="margin-top: 8px; border-top: 1px dashed #ddd; padding-top: 8px;">`;
+          resultHtml += `<strong>💡 其他方案：</strong><ul style="margin: 4px 0; padding-left: 20px;">`;
+          response.alternatives.forEach(alt => {
+            const altText = typeof alt === 'object' ? (alt.text || alt.content || JSON.stringify(alt)) : alt;
+            resultHtml += `<li>${altText}</li>`;
+          });
+          resultHtml += `</ul></div>`;
+        }
+        resultArea.innerHTML = resultHtml;
+      } else {
+        throw new Error(response.error || 'AI 處理失敗');
+      }
+    } catch (error) {
+      console.error('AI Review Error:', error);
+      resultArea.innerHTML = `<span style="color: var(--color-error);">❌ 抱歉，AI 暫時無法提供建議 (${error.message})</span>`;
+    } finally {
+      btnElement.innerHTML = originalText;
+      btnElement.disabled = false;
+      btnElement.style.opacity = '1';
+    }
+  }
+
+  /**
+   * 刷新分析結果
+   */
   refreshPage() {
     const refreshBtn = document.getElementById('refreshPageBtn');
     const contentWrapper = document.getElementById('contentWrapper');
@@ -737,6 +892,114 @@ class PageLensAnalyzer {
       url: 'https://docs.google.com/presentation/d/19W7ib6VGXHYqBHgyYbIXQbtUGGvcrBlC4OGdTKJHNc8/edit?usp=sharing',
       active: true
     });
+  }
+
+  /**
+   * 處理 AI 建議請求
+   */
+  async handleAISuggest(type, context, btnElement) {
+    if (btnElement.disabled) return;
+
+    // UI Loading state
+    const originalText = btnElement.innerHTML;
+    btnElement.innerHTML = '<span>⏳</span> 思考中...';
+    btnElement.disabled = true;
+    btnElement.style.opacity = '0.7';
+
+    try {
+      let adviceData;
+
+      if (type === 'IMAGES_MISSING_ALT') {
+        const images = context.missingImages || [];
+        if (images.length === 0) {
+          throw new Error("沒有找到缺少的圖片來源");
+        }
+
+        // 分析第一張圖片
+        const imageSrc = images[0];
+        // 截斷過長的 URL 顯示
+        const displayUrl = imageSrc.length > 30 ? imageSrc.substring(0, 30) + '...' : imageSrc;
+
+        adviceData = await this.api.analyzeAIAlt({
+          imageSrc,
+          context: "Context unavailable"
+        });
+
+        // 標記這是針對哪張圖片的
+        if (adviceData && adviceData.advice) {
+          adviceData.advice.critique = `(針對圖片: ${displayUrl}) ` + adviceData.advice.critique;
+        }
+
+      } else {
+        // Meta/Title
+        const pageTitle = this.pageData.title || "";
+        const pageDesc = this.pageData.description || "";
+        const content = this.pageData.html || "";
+        const keyword = document.getElementById('focusKeyword') ? document.getElementById('focusKeyword').value.trim() : "";
+
+        adviceData = await this.api.analyzeAIMeta({
+          title: pageTitle,
+          description: pageDesc,
+          content,
+          keyword
+        });
+      }
+
+      if (adviceData && adviceData.advice) {
+        const { critique, suggestions, educationalContext } = adviceData.advice;
+        const html = `
+           <div class="ai-advice-box" style="
+             margin-top: 10px; padding: 12px; background: #f0f7ff; 
+             border-radius: 6px; border-left: 4px solid #6366f1;
+             font-size: 0.9rem; color: #333; width: 100%;
+             animation: fadeIn 0.3s ease-in-out;
+           ">
+             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div style="font-weight:bold; color:#4f46e5;">🤖 AI 分析報告</div>
+                <div style="font-size:0.8em; color:#888;">Powered by PageLens AI</div>
+             </div>
+             
+             <div style="margin-bottom:12px; line-height:1.5;">${critique}</div>
+             
+             <div style="font-weight:bold; color:#4f46e5; margin-bottom:6px;">💡 建議改善</div>
+             <ul style="margin:0 0 12px 1.2em; padding:0; line-height:1.5;">
+               ${suggestions.map(s => `<li>${s}</li>`).join('')}
+             </ul>
+             
+             <div style="font-size: 0.85em; color: #555; background: rgba(99, 102, 241, 0.1); padding: 8px; border-radius: 4px;">
+               📚 <strong>知識小補帖:</strong> ${educationalContext}
+             </div>
+           </div>
+           <style>
+             @keyframes fadeIn {
+               from { opacity: 0; transform: translateY(-5px); }
+               to { opacity: 1; transform: translateY(0); }
+             }
+           </style>
+         `;
+
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        container.style.width = '100%';
+
+        // 插入到按鈕所在的父容器中 (issue-card 的右側列)
+        // 按鈕在 <div style="display:flex; flex-direction:column...">
+        btnElement.parentNode.appendChild(container);
+
+        // 移除按鈕
+        btnElement.remove();
+      } else {
+        throw new Error("AI 無法提供建議");
+      }
+
+    } catch (e) {
+      console.error("AI Error", e);
+      this.ui.showToast("AI 分析失敗: " + e.message, 'error');
+      // 恢復按鈕狀態
+      btnElement.innerHTML = originalText;
+      btnElement.disabled = false;
+      btnElement.style.opacity = '1';
+    }
   }
 
 }

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PageLens SEO 分析工具",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "專業的 SEO 分析工具，點擊即可分析當前頁面的 SEO 表現",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["http://localhost/*", "https://*/*"],

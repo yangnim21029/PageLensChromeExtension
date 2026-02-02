@@ -3,6 +3,7 @@
  * 處理 SEO 分析結果的顯示和渲染
  */
 import { getAssessmentTranslation } from './assessment-translations.js';
+import { writingHelper } from './seo-writing-helper.js';
 
 export class UIResults {
   constructor() {
@@ -63,9 +64,12 @@ export class UIResults {
     // 渲染摘要資訊
     const summaryHtml = this.renderSummary(goodIssues, okIssues, badIssues, issues);
 
+    // 渲染 AI 總結 (如果有)
+    const aiSummaryHtml = this.renderAiSummary(analysisResult);
+
     // 如果只有良好的項目
     if (goodIssues.length > 0 && okIssues.length === 0 && badIssues.length === 0) {
-      issuesList.innerHTML = summaryHtml + this.renderCelebration() + this.renderGoodIssues(goodIssues);
+      issuesList.innerHTML = summaryHtml + aiSummaryHtml + this.renderCelebration() + this.renderGoodIssues(goodIssues);
       return;
     }
 
@@ -84,8 +88,8 @@ export class UIResults {
       allIssuesHtml += this.renderGoodIssues(goodIssues);
     }
 
-    // 首屏先顯示摘要 + 過濾器 + 簡易骨架
-    issuesList.innerHTML = summaryHtml + filterTabsHtml + `
+    // 首屏先顯示摘要 + AI 總結 + 過濾器 + 簡易骨架
+    issuesList.innerHTML = summaryHtml + aiSummaryHtml + filterTabsHtml + `
       <div id="issuesSkeletonBlock" style="padding:0.5rem 0;">
         <div class="skeleton-line" style="height:14px; width:80%; margin-bottom:8px;"></div>
         <div class="skeleton-line" style="height:14px; width:75%; margin-bottom:8px;"></div>
@@ -97,9 +101,12 @@ export class UIResults {
     requestAnimationFrame(() => {
       const skeletonBlock = document.getElementById('issuesSkeletonBlock');
       if (skeletonBlock) skeletonBlock.remove();
-      issuesList.innerHTML = summaryHtml + filterTabsHtml + allIssuesHtml;
+      issuesList.innerHTML = summaryHtml + aiSummaryHtml + filterTabsHtml + allIssuesHtml;
       this.bindFilterEvents();
       this.animateScores(scores);
+
+      // 預設顯示嚴重問題
+      this.filterResults('critical');
     });
   }
 
@@ -149,8 +156,8 @@ export class UIResults {
   renderFilterTabs(goodCount, okCount, badCount) {
     return `
       <div class="filter-tabs" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-        <button class="filter-tab active" data-filter="all" style="padding: 5px 10px; border: none; background: none; cursor: pointer; font-weight: 600; color: var(--color-primary); border-bottom: 2px solid var(--color-primary);">全部</button>
-        <button class="filter-tab" data-filter="critical" style="padding: 5px 10px; border: none; background: none; cursor: pointer; color: #666;">
+        <button class="filter-tab" data-filter="all" style="padding: 5px 10px; border: none; background: none; cursor: pointer; color: #666;">全部</button>
+        <button class="filter-tab active" data-filter="critical" style="padding: 5px 10px; border: none; background: none; cursor: pointer; font-weight: 600; color: var(--color-primary); border-bottom: 2px solid var(--color-primary);">
           ❌ 嚴重 (${badCount})
         </button>
         <button class="filter-tab" data-filter="warning" style="padding: 5px 10px; border: none; background: none; cursor: pointer; color: #666;">
@@ -299,13 +306,22 @@ export class UIResults {
     const actualTotal = issues.length;
 
     return `
-      <div style="background: var(--color-gray-light); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-        <h4 style="margin-bottom: 0.5rem;">檢測項目統計 ${actualTotal === 16 ? '(API v2.0 完整檢測)' : ''}</h4>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; font-size: 0.9rem;">
-          <div>總檢測項目: ${actualTotal}</div>
-          <div style="color: var(--color-success);">✅ 良好: ${goodIssues.length}</div>
-          <div style="color: var(--color-warning);">⚠️ 可優化: ${okIssues.length}</div>
-          <div style="color: var(--color-error);">❌ 問題: ${badIssues.length}</div>
+      <div class="stats-bar" style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-light);">
+        <div class="stat-item">
+          <span class="stat-label">總檢測項目：</span>
+          <span class="status-badge" style="background: rgba(0,0,0,0.05); color: var(--text-primary);">${actualTotal}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">良好：</span>
+          <span class="status-badge pass">${goodIssues.length}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">待優化：</span>
+          <span class="status-badge warning">${okIssues.length}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">問題：</span>
+          <span class="status-badge error">${badIssues.length}</span>
         </div>
       </div>
     `;
@@ -326,34 +342,68 @@ export class UIResults {
   }
 
   /**
-   * 渲染良好的項目
+   * 渲染通過的檢測項目
    */
   renderGoodIssues(goodIssues) {
+    if (!goodIssues || goodIssues.length === 0) return '';
+
     return `
       <div class="issue-section" data-type="good" style="margin-bottom: 1.5rem;">
-        <h4 style="margin-bottom: 1rem; color: var(--color-success);">✅ 通過的檢測項目 (${goodIssues.length})</h4>
-        <div style="display: grid; gap: 0.5rem;">
-          ${goodIssues.map(issue => {
+        <h4 style="margin-bottom: 0.75rem; color: var(--color-success); font-size: 0.95rem; border-bottom: 1px solid rgba(72, 142, 128, 0.1); padding-bottom: 0.5rem;">
+          ✅ 通過的檢測項目 (${goodIssues.length})
+        </h4>
+        <div class="issue-card" data-severity="good" style="padding: 0; background: none; border: none; box-shadow: none;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; color: var(--text-primary);">
+            <tbody>
+              ${goodIssues.map(issue => {
       const translated = this.getTranslatedAssessment(issue);
       return `
-            <div class="issue-card" data-severity="good" data-assessment="${(issue.assessmentType || 'seo').toLowerCase()}"
-                        style="background: rgba(72, 142, 128, 0.05); border: 1px solid rgba(72, 142, 128, 0.2); 
-                        border-radius: 8px; padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-              <span style="color: var(--color-success); font-size: 1.2rem;">✓</span>
-              <div style="flex: 1;">
-                <div style="display: flex; align-items: center; gap: 5px;">
-                  <strong style="color: var(--text-primary);">${translated.name}</strong>
-                  ${this.renderContextualHelp(translated)}
-                </div>
-                ${translated.description ? `<div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">${translated.description}</div>` : ''}
-              </div>
-              <span style="font-size: 0.85rem; color: var(--color-success);">${this.getIssueData(issue)}</span>
-            </div>
-          `}).join('')}
+                <tr style="border-bottom: 1px solid rgba(0,0,0,0.03);">
+                  <td style="padding: 0.6rem 0.4rem; color: var(--color-success); width: 20px;">✓</td>
+                  <td style="padding: 0.6rem 0.4rem; font-weight: 500;">${translated.name}</td>
+                  <td style="padding: 0.6rem 0.4rem; text-align: right; color: var(--text-secondary);">${this.getIssueData(issue)}</td>
+                </tr>
+              `;
+    }).join('')}
+            </tbody>
+          </table>
         </div>
       </div>
     `;
   }
+
+  /**
+   * 渲染 AI 總結分析
+   */
+  renderAiSummary(analysisResult) {
+    if (!analysisResult.markdownReport) return '';
+
+    // 將 Markdown 簡單轉換為 HTML (處理粗體、換行、列表)
+    const reportHtml = analysisResult.markdownReport
+      .replace(/### (.*?)\n/g, '<h4 style="margin: 1rem 0 0.5rem 0; color: var(--color-primary); font-size: 1rem;">$1</h4>')
+      .replace(/## (.*?)\n/g, '<h3 style="margin: 1.2rem 0 0.6rem 0; color: var(--text-primary); font-size: 1.1rem; border-bottom: 2px solid var(--color-primary-light); padding-bottom: 0.3rem;">$1</h3>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^- (.*?)\n/gm, '<li style="margin-bottom: 0.4rem;">$1</li>')
+      .replace(/(<li.*<\/li>)/g, '<ul style="margin: 0.5rem 0; padding-left: 1.2rem;">$1</ul>')
+      // 清理重複的 ul 標籤 (簡單的正則替換不完美，但在可控輸入下夠用)
+      .replace(/<\/ul>\s*<ul.*?>/g, '')
+      .replace(/\n/g, '<br>');
+
+    return `
+      <div class="ai-summary-box" style="background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.05) 0%, rgba(var(--color-primary-rgb), 0.02) 100%); 
+                  border: 1px solid rgba(var(--color-primary-rgb), 0.15); border-radius: 12px; padding: 1.2rem; margin-bottom: 2rem; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -10px; right: -10px; font-size: 4rem; opacity: 0.05; pointer-events: none;">🤖</div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.8rem;">
+          <span style="font-size: 1.2rem;">✨</span>
+          <strong style="color: var(--color-primary); font-size: 1.05rem;">AI 綜合診斷報告</strong>
+        </div>
+        <div class="ai-summary-content" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-primary);">
+          ${reportHtml}
+        </div>
+      </div>
+    `;
+  }
+
 
   /**
    * 渲染情境式幫助圖標
@@ -378,18 +428,24 @@ export class UIResults {
           ${okIssues.map(issue => {
       const translated = this.getTranslatedAssessment(issue);
       return `
-            <div class="issue-card" data-severity="warning" data-assessment="${(issue.assessmentType || 'seo').toLowerCase()}"
-                        style="background: rgba(255, 193, 7, 0.05); border: 1px solid rgba(255, 193, 7, 0.2); 
-                        border-radius: 8px; padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-              <span style="color: var(--color-warning); font-size: 1.2rem;">⚠</span>
-              <div style="flex: 1;">
-                <div style="display: flex; align-items: center; gap: 5px;">
-                  <strong style="color: var(--text-primary);">${translated.name}</strong>
-                  ${this.renderContextualHelp(translated)}
+            <div class="issue-item-container" style="margin-bottom: 1rem;">
+              <div class="issue-card" data-severity="warning" data-assessment="${(issue.assessmentType || 'seo').toLowerCase()}"
+                          style="background: rgba(255, 193, 7, 0.05); border: 1px solid rgba(255, 193, 7, 0.2); 
+                          border-radius: 8px 8px 0 0; padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: none;">
+                <span style="color: var(--color-warning); font-size: 1.2rem;">⚠</span>
+                <div style="flex: 1;">
+                  <div style="display: flex; align-items: center; gap: 5px;">
+                    <strong style="color: var(--text-primary);">${translated.name}</strong>
+                    ${this.renderContextualHelp(translated)}
+                  </div>
+                  ${translated.description ? `<div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">${translated.description}</div>` : ''}
                 </div>
-                ${translated.description ? `<div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">${translated.description}</div>` : ''}
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
+                  <span style="font-size: 0.85rem; color: var(--color-warning);">${this.getIssueData(issue)}</span>
+                  ${this.renderAIButton(issue)}
+                </div>
               </div>
-              <span style="font-size: 0.85rem; color: var(--color-warning);">${this.getIssueData(issue)}</span>
+              ${this.renderAIReviewUI(issue)}
             </div>
           `}).join('')}
         </div>
@@ -408,18 +464,24 @@ export class UIResults {
           ${badIssues.map(issue => {
       const translated = this.getTranslatedAssessment(issue);
       return `
-            <div class="issue-card" data-severity="critical" data-assessment="${(issue.assessmentType || 'seo').toLowerCase()}"
-                        style="background: rgba(255, 0, 0, 0.05); border: 1px solid rgba(255, 0, 0, 0.2); 
-                        border-radius: 8px; padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-              <span style="color: var(--color-error); font-size: 1.2rem;">✗</span>
-              <div style="flex: 1;">
-                <div style="display: flex; align-items: center; gap: 5px;">
-                  <strong style="color: var(--text-primary);">${translated.name}</strong>
-                  ${this.renderContextualHelp(translated)}
+            <div class="issue-item-container" style="margin-bottom: 1rem;">
+              <div class="issue-card" data-severity="critical" data-assessment="${(issue.assessmentType || 'seo').toLowerCase()}"
+                          style="background: rgba(255, 0, 0, 0.05); border: 1px solid rgba(255, 0, 0, 0.2); 
+                          border-radius: 8px 8px 0 0; padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: none;">
+                <span style="color: var(--color-error); font-size: 1.2rem;">✗</span>
+                <div style="flex: 1;">
+                  <div style="display: flex; align-items: center; gap: 5px;">
+                    <strong style="color: var(--text-primary);">${translated.name}</strong>
+                    ${this.renderContextualHelp(translated)}
+                  </div>
+                  ${translated.description ? `<div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">${translated.description}</div>` : ''}
                 </div>
-                ${translated.description ? `<div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">${translated.description}</div>` : ''}
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
+                  <span style="font-size: 0.85rem; color: var(--color-error);">${this.getIssueData(issue)}</span>
+                  ${this.renderAIButton(issue)}
+                </div>
               </div>
-              <span style="font-size: 0.85rem; color: var(--color-error);">${this.getIssueData(issue)}</span>
+              ${this.renderAIReviewUI(issue)}
             </div>
           `}).join('')}
         </div>
@@ -451,12 +513,12 @@ export class UIResults {
     );
 
     if (translation) {
+      // 優先使用翻譯檔案中更白話的描述
       let description = translation.description;
 
-      // 如果 API 返回了 standards，優先使用 API 的標準值
-      if (issue.standards && issue.standards.description) {
-        description = issue.standards.description;
-      } else if (issue.standards && issue.standards.optimal) {
+      // 只在翻譯沒有描述時才使用 API 的 standards.description
+      // 或者將 standards.optimal 作為補充資訊附加在後面
+      if (issue.standards && issue.standards.optimal && !issue.standards.description) {
         const optimal = issue.standards.optimal;
         const unit = issue.standards.unit || '';
         if (optimal.min !== undefined && optimal.max !== undefined) {
@@ -473,6 +535,7 @@ export class UIResults {
         title: translation.title,
         description: description,
         recommendation: translation.recommendation
+
       };
     }
 
@@ -507,21 +570,7 @@ export class UIResults {
         const missing = details.missingAltCount || details.imagesWithoutAlt || 0;
         dataStr = `${missing}/${total} 張缺少`;
         break;
-      case 'KEYWORD_MISSING_FIRST_PARAGRAPH':
-        dataStr = details.firstParagraph ?
-          `"${details.firstParagraph.substring(0, 50)}..."` :
-          `關鍵字: ${details.keywordCount || 0} 次`;
-        break;
-      case 'KEYWORD_DENSITY_LOW': {
-        const densityValue = parseFloat(details.density || details.keywordDensity || '0');
-        const density = densityValue.toFixed(2);
-        const keywordWordLength = details.keywordWordLength ??
-          ((details.keywordOccurrences ?? details.keywordCount ?? 0) *
-            (details.keywordLength ?? details.focusKeywordLength ?? 0));
-        const totalWords = details.totalWords ?? details.wordCount ?? 0;
-        dataStr = `${density}% (${keywordWordLength}/${totalWords} 字)`;
-        break;
-      }
+
       case 'META_DESCRIPTION_MISSING':
       case 'META_DESCRIPTION_NEEDS_IMPROVEMENT':
         const metaDesc = details.metaDescription || details.description || '';
@@ -572,4 +621,109 @@ export class UIResults {
     return dataStr;
   }
 
+
+  /**
+   * Render AI Suggest Button
+   */
+  renderAIButton(issue) {
+    const type = issue.id || issue.assessmentId;
+    // Only show for relevant types
+    const relevantTypes = [
+      'TITLE_NEEDS_IMPROVEMENT',
+      'META_DESCRIPTION_MISSING',
+      'IMAGES_MISSING_ALT'
+    ];
+
+    let buttons = '';
+
+    // Add writing helper button
+    buttons += this.renderWritingHelperButton(issue);
+
+    // AI 建議功能已整合至寫作小幫手，不再單獨顯示按鈕
+
+    return buttons;
+  }
+
+  /**
+   * Render Writing Helper Button
+   * 渲染寫作小幫手按鈕
+   */
+  renderWritingHelperButton(issue) {
+    const type = issue.id || issue.assessmentId;
+
+    // 只在相關類型顯示寫作小幫手
+    const helperTypeMap = {
+      'TITLE_NEEDS_IMPROVEMENT': 'title',
+      'TITLE_MISSING': 'title',
+      'META_DESCRIPTION_MISSING': 'description',
+      'META_DESCRIPTION_NEEDS_IMPROVEMENT': 'description',
+      'IMAGES_MISSING_ALT': 'alt'
+    };
+
+    const helperType = helperTypeMap[type];
+    if (!helperType) return '';
+
+    const contextStr = JSON.stringify(issue.details || {}).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+
+    return `<button class="writing-helper-btn" data-helper-type="${helperType}" data-context='${contextStr}'>
+      <span class="btn-icon">📝</span> 寫作小幫手
+    </button>`;
+  }
+
+  /**
+   * 渲染 AI Review UI
+   * @param {Object} issue 
+   */
+  renderAIReviewUI(issue) {
+    const type = issue.id || issue.assessmentId;
+    const details = issue.details || {};
+
+    // 獲取目前內容作為預設值
+    let defaultValue = '';
+    if (type.includes('TITLE')) {
+      defaultValue = details.title || '';
+    } else if (type.includes('META')) {
+      defaultValue = details.metaDescription || '';
+    } else if (type.includes('H1')) {
+      defaultValue = details.h1Text || '';
+    } else if (type.includes('ALT')) {
+      defaultValue = details.altText || '';
+    }
+
+    const contextStr = JSON.stringify(details).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+    const isImageAlt = type === 'IMAGES_MISSING_ALT';
+    const missingImages = details.missingImages || [];
+
+    return `
+      <div class="ai-review-container" style="margin: -0.25rem 0.5rem 1rem 0.5rem; padding: 1rem; background: white; border: 1px solid rgba(0,0,0,0.05); border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+        ${isImageAlt && missingImages.length > 0 ? `
+          <div style="margin-bottom: 12px;">
+            <p style="font-size: 0.8rem; margin-bottom: 8px; color: var(--text-secondary);">請選擇一張圖片來產生建議：</p>
+            <div class="ai-image-selection-list" style="display: flex; gap: 10px; overflow-x: auto; padding: 4px; padding-bottom: 8px; scrollbar-width: thin;">
+              ${missingImages.map((src, index) => `
+                <div class="ai-image-option" data-src="${src}">
+                  <img src="${src}" onerror="this.src='https://via.placeholder.com/80?text=No+Img'; this.parentElement.style.opacity='0.5';">
+                  <div class="selected-check">✓</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+        <div style="display: flex; gap: 8px; align-items: flex-start;">
+          <textarea class="ai-review-input" placeholder="${isImageAlt ? '選擇圖片或輸入圖片 URL...' : '輸入你想 review 的內容...'}" 
+            style="flex: 1; border: 1px solid #ddd; border-radius: 6px; padding: 8px; font-size: 0.85rem; min-height: 60px; resize: vertical; outline: none; transition: border-color 0.2s;"
+            onfocus="this.style.borderColor='var(--color-primary)'"
+            onblur="this.style.borderColor='#ddd'">${defaultValue}</textarea>
+          <button class="ai-review-btn" data-assessment-id="${type}" data-context='${contextStr}'
+            style="padding: 8px 16px; background: var(--color-primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; height: 36px; white-space: nowrap; transition: opacity 0.2s;">
+            AI Review
+          </button>
+        </div>
+        <div class="ai-review-result" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-secondary); display: none; line-height: 1.5; padding: 10px; background: #f9f9f9; border-radius: 6px; border-left: 3px solid var(--color-primary);">
+          <!-- AI 建議將顯示於此 -->
+        </div>
+      </div>
+    `;
+  }
 }
+

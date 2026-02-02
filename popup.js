@@ -1,5 +1,5 @@
 // 點擊擴充功能時自動判斷是否可分析，能分析就直接開全螢幕
-(function() {
+(function () {
   const supportedSites = [
     { name: 'Pretty', domain: 'pretty.presslogic.com' },
     { name: 'GirlStyle', domain: 'girlstyle.com' },
@@ -18,17 +18,13 @@
   let autoLaunchTriggered = false;
   let lastFallbackMessage = '';
 
-  function renderSupportedSites(container) {
+  function renderSiteLinks(container) {
     if (!container) return;
     container.innerHTML = supportedSites
-      .map(site => `<span class="site-pill">${site.name} (${site.domain})</span>`)
-      .join('');
-  }
-
-  function renderNavButtons(container) {
-    if (!container) return;
-    container.innerHTML = supportedSites
-      .map(site => `<button class="nav-button" data-url="https://${site.domain}">${site.name}</button>`)
+      .map(site => `<a class="site-link" href="https://${site.domain}" target="_blank" rel="noopener">
+        <img src="https://${site.domain}/favicon.ico" alt="" onerror="this.style.display='none'">
+        <span>${site.name}</span>
+      </a>`)
       .join('');
   }
 
@@ -253,46 +249,15 @@
       fallbackCard: document.getElementById('fallbackCard'),
       fallbackTitle: document.getElementById('fallbackTitle'),
       fallbackMessage: document.getElementById('fallbackMessage'),
-      supportedSitesList: document.getElementById('supportedSitesList'),
-      navButtons: document.getElementById('navButtons'),
-      customUrlInput: document.getElementById('customUrlInput'),
-      openUrlBtn: document.getElementById('openUrlBtn')
+      siteLinks: document.getElementById('siteLinks')
     };
 
     // 立即顯示主要內容，不等待背景檢查
     revealMainContent(ui.initialLoading, ui.mainContent);
 
-    renderSupportedSites(ui.supportedSitesList);
-    renderNavButtons(ui.navButtons);
+    renderSiteLinks(ui.siteLinks);
     setStatus(ui.statusIcon, ui.statusTitle, ui.statusSubtitle, ui.statusCard,
       '🔍', '正在檢查這個頁面...', '符合條件時會自動開啟全螢幕分析', 'active');
-
-    if (ui.navButtons) {
-      ui.navButtons.addEventListener('click', (e) => {
-        const target = e.target;
-        if (target.matches('.nav-button') && target.dataset.url) {
-          openUrlInNewTab(ui, target.dataset.url);
-        }
-      });
-    }
-
-    if (ui.openUrlBtn && ui.customUrlInput) {
-      ui.openUrlBtn.addEventListener('click', () => {
-        const url = ui.customUrlInput.value.trim();
-        if (!url) {
-          updateFallbackMessage(ui, '請先貼上支援的文章網址（需包含 /article/）');
-          return;
-        }
-        openUrlInNewTab(ui, url);
-      });
-
-      ui.customUrlInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          ui.openUrlBtn.click();
-        }
-      });
-    }
 
     const tab = await getCurrentPageInfo(ui);
     if (!tab || !tab.url) {

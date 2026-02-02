@@ -6,24 +6,24 @@ const assessmentTranslations = {
 
   H1_MISSING: {
     'zh-TW': {
-      name: 'H1 標籤檢測',
+      name: 'H1 標題檢測',
       good: {
-        title: 'H1 標籤正常',
-        description: '頁面有 H1 標題',
-        recommendation: '太好了！你的頁面有 H1 標題。'
+        title: '有 H1 標題',
+        description: '',
+        recommendation: ''
       },
       bad: {
-        title: '缺少 H1 標籤',
-        description: '頁面缺少 H1 標題',
-        recommendation: '新增一個 H1 標題來描述頁面的主要內容。'
+        title: '還沒有主標題',
+        description: '頁面還沒有 H1 標題',
+        recommendation: '加上一個清楚描述文章內容的 H1 標題，讓讀者和搜尋引擎一眼就知道這篇在講什麼！'
       }
     },
     en: {
       name: 'H1 Tag Check',
       good: {
         title: 'H1 Tag Present',
-        description: 'Page has an H1 heading',
-        recommendation: 'Great! Your page has an H1 heading.'
+        description: '',
+        recommendation: ''
       },
       bad: {
         title: 'H1 Tag Missing',
@@ -38,22 +38,22 @@ const assessmentTranslations = {
     'zh-TW': {
       name: '多重 H1 檢測',
       good: {
-        title: '單一 H1 標籤',
-        description: '頁面只有一個 H1 標題',
-        recommendation: '完美！你的頁面只有一個 H1 標題。'
+        title: 'H1 只有一個',
+        description: '',
+        recommendation: ''
       },
       bad: {
-        title: '多個 H1 標籤',
-        description: '頁面有多個 H1 標題',
-        recommendation: '每頁只使用一個 H1 標籤。將其他的 H1 改為 H2 或 H3。'
+        title: 'H1 有好幾個',
+        description: '頁面有多個 H1 標題，可能會混淆搜尋引擎',
+        recommendation: '一頁只留一個 H1，其他的改成 H2 或 H3 就好！'
       }
     },
     en: {
       name: 'Multiple H1 Detection',
       good: {
         title: 'Single H1 Tag',
-        description: 'Page has exactly one H1 heading',
-        recommendation: 'Perfect! Your page has exactly one H1 heading.'
+        description: '',
+        recommendation: ''
       },
       bad: {
         title: 'Multiple H1 Tags',
@@ -66,71 +66,64 @@ const assessmentTranslations = {
 
   H1_KEYWORD_MISSING: {
     'zh-TW': {
-      name: '頁面 H1 關鍵字檢測',
+      name: 'H1 關鍵字檢測',
       good: {
-        title: '頁面 H1 包含關鍵字',
-        description: '頁面 H1 標題包含焦點關鍵字和相關關鍵字',
-        recommendation: '完美！你的頁面 H1 同時包含了焦點關鍵字和相關關鍵字。'
+        title: 'H1 有放關鍵字',
+        description: '',
+        recommendation: ''
       },
       ok: {
-        title: '沒有提供焦點關鍵字',
-        description: '沒有提供焦點關鍵字進行頁面 H1 分析',
-        recommendation: '設定焦點關鍵字以分析頁面 H1 優化。'
+        title: '沒有設定焦點關鍵字',
+        description: '沒有提供焦點關鍵字，無法檢查',
+        recommendation: '設定焦點關鍵字，我們才能幫你檢查 H1 是否有放對關鍵字。'
       },
       bad: {
-        title: '頁面 H1 缺少關鍵字',
-        description: '頁面 H1 標題缺少焦點關鍵字',
-        recommendation: '在頁面 H1 標題中加入焦點關鍵字和至少一個相關關鍵字。'
+        title: 'H1 沒有放關鍵字',
+        description: 'H1 標題沒有包含焦點關鍵字',
+        recommendation: '在 H1 標題加入焦點關鍵字，讓搜尋引擎更容易理解文章主題！'
       }
     },
     en: {
       name: 'H1 Keyword Check',
       good: {
         title: 'H1 Contains Keywords',
-        description: 'H1 heading contains focus keyword and related keywords',
-        recommendation:
-          'Perfect! Your H1 contains both the focus keyword and related keywords.'
-      },
-      ok: {
-        title: 'H1 Contains Focus Keyword',
-        description: 'H1 heading contains the focus keyword',
-        recommendation: 'Good! H1 contains the focus keyword.'
+        description: '',
+        recommendation: ''
       },
       bad: {
         title: 'H1 Missing Keywords',
-        description: 'H1 heading missing focus keyword',
+        description: 'H1 heading is missing the focus keyword',
         recommendation:
-          'Include your focus keyword and at least one related keyword in the H1 heading.'
+          'Include the focus keyword and at least one related keyword in your H1.'
       }
     }
   },
 
   H2_SYNONYMS_MISSING: {
     'zh-TW': {
-      name: 'H2 相關關鍵字檢測',
+      name: 'H2 相關關鍵字',
       good: {
-        title: '所有相關關鍵字都在 H2 中',
-        description: '所有相關關鍵字都出現在 H2 標題中',
-        recommendation: '太棒了！所有相關關鍵字都分布在 H2 標題中。'
+        title: 'H2 都有放相關關鍵字',
+        description: '',
+        recommendation: ''
       },
       ok: {
-        title: '部分相關關鍵字缺失',
-        description: '部分相關關鍵字沒有出現在 H2 標題',
-        recommendation: '在 H2 標題加入缺少的相關關鍵字，提升覆蓋率。'
+        title: '部分相關關鍵字沒有放',
+        description: '有些相關關鍵字還沒出現在小標題裡',
+        recommendation: '試試在 H2 小標題加入更多相關關鍵字，讓文章結構更完整！'
       },
       bad: {
-        title: '大部分相關關鍵字缺失',
-        description: 'H2 標題中缺少大部分相關關鍵字',
-        recommendation: '在 H2 標題中加入相關關鍵字，改善內容結構。'
+        title: '缺少很多相關關鍵字',
+        description: 'H2 標題缺少大部分相關關鍵字',
+        recommendation: '在 H2 小標題中加入相關關鍵字，讓文章內容更豐富！'
       }
     },
     en: {
       name: 'H2 Related Keywords Check',
       good: {
         title: 'All Related Keywords in H2',
-        description: 'All related keywords appear in H2 headings',
-        recommendation:
-          'Excellent! All your related keywords appear in H2 headings.'
+        description: '',
+        recommendation: ''
       },
       ok: {
         title: 'Some Related Keywords Missing',
@@ -147,24 +140,24 @@ const assessmentTranslations = {
 
   IMAGES_MISSING_ALT: {
     'zh-TW': {
-      name: '圖片替代文字檢測',
+      name: '圖片 Alt 屬性',
       good: {
-        title: '所有圖片都有替代文字',
-        description: '所有圖片都有描述性的 alt 屬性',
-        recommendation: '太好了！所有圖片都有替代文字。'
+        title: '圖片都有說明文字',
+        description: '',
+        recommendation: ''
       },
       bad: {
-        title: '圖片缺少替代文字',
-        description: '部分圖片缺少 alt 屬性',
-        recommendation: '為所有圖片加入描述性的替代文字，改善無障礙性和 SEO。'
+        title: '有圖片沒有說明文字',
+        description: '有些圖片缺少描述文字',
+        recommendation: '幫圖片加上說明文字，讓搜尋引擎和視障讀者都能理解圖片在說什麼！'
       }
     },
     en: {
       name: 'Image Alt Text Check',
       good: {
         title: 'All Images Have Alt Text',
-        description: 'All images have descriptive alt text',
-        recommendation: 'Excellent! All your images have alt text.'
+        description: '',
+        recommendation: ''
       },
       bad: {
         title: 'Images Missing Alt Text',
@@ -175,105 +168,33 @@ const assessmentTranslations = {
     }
   },
 
-  KEYWORD_MISSING_FIRST_PARAGRAPH: {
-    'zh-TW': {
-      name: '首段關鍵字檢測',
-      good: {
-        title: '關鍵字出現在首段',
-        description: '焦點關鍵字出現在第一段',
-        recommendation: '很好！你的焦點關鍵字出現在第一段。'
-      },
-      ok: {
-        title: '沒有提供焦點關鍵字',
-        description: '沒有提供焦點關鍵字進行首段分析',
-        recommendation: '設定焦點關鍵字以分析首段優化。'
-      },
-      bad: {
-        title: '首段缺少關鍵字',
-        description: '焦點關鍵字沒有出現在第一段',
-        recommendation: '在第一段中加入焦點關鍵字以提升 SEO 效果。'
-      }
-    },
-    en: {
-      name: 'First Paragraph Keyword Check',
-      good: {
-        title: 'Keyword in First Paragraph',
-        description: 'Focus keyword appears in the first paragraph',
-        recommendation:
-          'Great! Your focus keyword appears in the first paragraph.'
-      },
-      bad: {
-        title: 'Keyword Missing from First Paragraph',
-        description: 'Focus keyword does not appear in the first paragraph',
-        recommendation:
-          'Include your focus keyword in the first paragraph to improve SEO.'
-      }
-    }
-  },
 
-  KEYWORD_DENSITY_LOW: {
-    'zh-TW': {
-      name: '關鍵字密度檢測',
-      good: {
-        title: '關鍵字密度適中',
-        description: '關鍵字密度在最佳範圍內',
-        recommendation: '完美！你的關鍵字密度在最佳範圍內。'
-      },
-      ok: {
-        title: '沒有提供焦點關鍵字',
-        description: '沒有提供焦點關鍵字進行密度分析',
-        recommendation: '設定焦點關鍵字以分析關鍵字密度。'
-      },
-      bad: {
-        title: '關鍵字密度異常',
-        description: '關鍵字密度過低或過高',
-        recommendation:
-          '調整關鍵字使用頻率，建議密度保持在 0.5-6.0% 之間（最佳範圍：0.5-2.5%）。'
-      }
-    },
-    en: {
-      name: 'Keyword Density Check',
-      good: {
-        title: 'Good Keyword Density',
-        description: 'Keyword density is within optimal range',
-        recommendation:
-          'Perfect! Your keyword density is within the optimal range.'
-      },
-      bad: {
-        title: 'Keyword Density Issue',
-        description: 'Keyword density is too low or too high',
-        recommendation:
-          'Adjust keyword usage. Recommended density: 0.5-2.5%. Keywords in H2 headings have 2x weight.'
-      }
-    }
-  },
 
   META_DESCRIPTION_NEEDS_IMPROVEMENT: {
     'zh-TW': {
-      name: 'Meta 描述關鍵字檢測',
+      name: '描述關鍵字檢測',
       good: {
-        title: 'Meta 描述包含關鍵字',
-        description: 'Meta 描述包含焦點關鍵字',
-        recommendation: '很好！你的 Meta 描述包含了焦點關鍵字。'
+        title: '描述有放關鍵字',
+        description: '',
+        recommendation: ''
       },
       ok: {
-        title: '沒有提供焦點關鍵字',
-        description: '沒有提供焦點關鍵字進行 Meta 描述分析',
-        recommendation: '設定焦點關鍵字以分析 Meta 描述優化。'
+        title: '沒有設定焦點關鍵字',
+        description: '沒有提供焦點關鍵字，無法檢查',
+        recommendation: '設定焦點關鍵字，我們才能檢查描述是否有放對關鍵字。'
       },
       bad: {
-        title: 'Meta 描述需要改進',
-        description: 'Meta 描述缺少焦點關鍵字',
-        recommendation: '在 Meta 描述中加入焦點關鍵字。'
+        title: '描述沒有放關鍵字',
+        description: '描述還沒有加入焦點關鍵字',
+        recommendation: '在描述中加入焦點關鍵字，讓搜尋引擎更容易理解這篇文章在講什麼！'
       }
     },
     en: {
       name: 'Meta Description Keyword Check',
       good: {
         title: 'Meta Description Contains Keyword',
-        description: 'Meta description contains the focus keyword',
-        recommendation:
-          'Great! Your meta description contains the focus keyword.'
+        description: '',
+        recommendation: ''
       },
       bad: {
         title: 'Meta Description Needs Improvement',
@@ -283,33 +204,33 @@ const assessmentTranslations = {
     }
   },
 
+
   META_DESCRIPTION_MISSING: {
     'zh-TW': {
-      name: 'Meta 描述長度檢測',
+      name: 'Meta Description 檢測',
       good: {
-        title: 'Meta 描述長度適中',
-        description: 'Meta 描述寬度在最佳範圍內',
-        recommendation: '完美！你的 Meta 描述長度適中。'
+        title: '描述長度剛剛好',
+        description: '',
+        recommendation: ''
       },
       ok: {
-        title: 'Meta 描述過短',
-        description: 'Meta 描述長度不足',
-        recommendation: '擴充 Meta 描述內容，建議寬度 >600px。'
+        title: '描述有點短',
+        description: '描述再寫長一點會更好',
+        recommendation: '多寫幾句話介紹文章內容，讓讀者更想點進來！'
       },
       bad: {
-        title: 'Meta 描述問題',
-        description: 'Meta 描述缺失或過長',
-        recommendation: '調整 Meta 描述（最佳寬度：600-960px）。',
-        // 以下為細分情況，前端可根據 details 判斷
+        title: '描述需要調整',
+        description: '描述太長或沒有寫',
+        recommendation: '寫一段 120-160 字的描述，讓讀者知道文章在講什麼！',
         missing: {
-          title: '缺少 Meta 描述',
-          description: '頁面缺少 Meta 描述',
-          recommendation: '新增 Meta 描述（最佳寬度：600-960px）。'
+          title: '還沒寫描述',
+          description: '這篇文章還沒有 Meta 描述',
+          recommendation: '加上描述讓搜尋結果更吸引人點擊！'
         },
         tooLong: {
-          title: 'Meta 描述過長',
-          description: 'Meta 描述超過建議長度',
-          recommendation: '縮短 Meta 描述至 960px 以內。'
+          title: '描述太長了',
+          description: '描述太長會被搜尋引擎截斷',
+          recommendation: '精簡一下描述，讓重點在前面就能看到。'
         }
       }
     },
@@ -317,8 +238,8 @@ const assessmentTranslations = {
       name: 'Meta Description Length Check',
       good: {
         title: 'Meta Description Length Good',
-        description: 'Meta description width is optimal',
-        recommendation: 'Perfect! Your meta description width is optimal.'
+        description: '',
+        recommendation: ''
       },
       ok: {
         title: 'Meta Description Too Short',
@@ -329,7 +250,6 @@ const assessmentTranslations = {
         title: 'Meta Description Issue',
         description: 'Meta description missing or too long',
         recommendation: 'Adjust meta description (optimal: 600-960px).',
-        // Subcategories for frontend to determine based on details
         missing: {
           title: 'Meta Description Missing',
           description: 'Page is missing meta description',
@@ -346,29 +266,29 @@ const assessmentTranslations = {
 
   TITLE_NEEDS_IMPROVEMENT: {
     'zh-TW': {
-      name: 'Meta 標題長度檢測',
+      name: '標題長度檢測',
       good: {
-        title: 'Meta 標題長度適中',
-        description: 'Meta 標題寬度在最佳範圍內',
-        recommendation: '完美！你的 Meta 標題長度適中。'
+        title: '標題長度剛剛好',
+        description: '',
+        recommendation: ''
       },
       ok: {
-        title: 'Meta 標題長度需調整',
-        description: 'Meta 標題過短或過長',
-        recommendation: '調整 Meta 標題長度，建議寬度 >150px，最大 600px。'
+        title: '標題長度可以調整',
+        description: '標題有點太短或太長',
+        recommendation: '標題長度建議在 25-60 個字之間，這樣搜尋結果才能完整顯示。'
       },
       bad: {
-        title: '缺少 Meta 標題',
-        description: '頁面缺少 Meta 標題',
-        recommendation: '新增描述性 Meta 標題（最佳寬度：>150px，最大 600px）。'
+        title: '還沒有標題',
+        description: '這篇文章還沒設定標題',
+        recommendation: '加上一個清楚描述文章內容的標題！'
       }
     },
     en: {
       name: 'Title Length Check',
       good: {
         title: 'Title Length Good',
-        description: 'Title width is optimal',
-        recommendation: 'Perfect! Your title width is optimal.'
+        description: '',
+        recommendation: ''
       },
       ok: {
         title: 'Title Length Needs Improvement',
@@ -386,30 +306,29 @@ const assessmentTranslations = {
 
   TITLE_MISSING: {
     'zh-TW': {
-      name: 'Meta 標題關鍵字檢測',
+      name: '標題關鍵字檢測',
       good: {
-        title: 'Meta 標題包含關鍵字',
-        description: 'Meta 標題包含焦點關鍵字和相關關鍵字',
-        recommendation: '完美！你的 Meta 標題同時包含了焦點關鍵字和相關關鍵字。'
+        title: '標題有放關鍵字',
+        description: '',
+        recommendation: ''
       },
       ok: {
-        title: '沒有提供焦點關鍵字',
-        description: '沒有提供焦點關鍵字進行 Meta 標題分析',
-        recommendation: '設定焦點關鍵字以分析 Meta 標題優化。'
+        title: '沒有設定焦點關鍵字',
+        description: '沒有提供焦點關鍵字，無法檢查',
+        recommendation: '設定焦點關鍵字，我們才能檢查標題是否有放對關鍵字。'
       },
       bad: {
-        title: 'Meta 標題缺少關鍵字',
-        description: 'Meta 標題缺少焦點關鍵字',
-        recommendation: '在 Meta 標題中加入焦點關鍵字和至少一個相關關鍵字。'
+        title: '標題沒有放關鍵字',
+        description: '標題還沒有加入焦點關鍵字',
+        recommendation: '在標題中加入焦點關鍵字，讓讀者和搜尋引擎更容易理解文章在講什麼！'
       }
     },
     en: {
       name: 'Title Keyword Check',
       good: {
         title: 'Title Contains Keywords',
-        description: 'Title contains focus keyword and related keywords',
-        recommendation:
-          'Perfect! Your title contains both the focus keyword and related keywords.'
+        description: '',
+        recommendation: ''
       },
       ok: {
         title: 'Title Contains Focus Keyword',
@@ -429,27 +348,56 @@ const assessmentTranslations = {
     'zh-TW': {
       name: '內容長度檢測',
       good: {
-        title: '內容長度充足',
-        description: '內容字數達到最低要求',
-        recommendation: '很好！你的內容達到了最低字數要求。'
+        title: '內容字數足夠',
+        description: '',
+        recommendation: ''
       },
       bad: {
-        title: '內容過短',
-        description: '內容字數不足',
-        recommendation: '擴充內容至少到 300 字以上。'
+        title: '內容有點短',
+        description: '文章字數偏少',
+        recommendation: '建議再多寫一點，讓內容更豐富完整！建議至少 300 字以上。'
       }
     },
     en: {
       name: 'Content Length Check',
       good: {
         title: 'Content Length Good',
-        description: 'Content meets minimum word count',
-        recommendation: 'Great! Your content meets the minimum word count.'
+        description: '',
+        recommendation: ''
       },
       bad: {
         title: 'Content Too Short',
         description: 'Content has insufficient words',
         recommendation: 'Consider expanding your content to at least 300 words.'
+      }
+    }
+  },
+
+  INTERNAL_LINKS_LOW: {
+    'zh-TW': {
+      name: '站內連結檢測',
+      good: {
+        title: '站內連結數量充足',
+        description: '',
+        recommendation: ''
+      },
+      bad: {
+        title: '站內連結有點少',
+        description: '文章的內部連結偏少',
+        recommendation: '多放幾個相關文章的連結，讓讀者可以延伸閱讀更多好內容！'
+      }
+    },
+    en: {
+      name: 'Internal Links Check',
+      good: {
+        title: 'Sufficient Internal Links',
+        description: '',
+        recommendation: ''
+      },
+      bad: {
+        title: 'Few Internal Links',
+        description: 'Article has limited internal links',
+        recommendation: 'Add more internal links to improve site structure and user experience.'
       }
     }
   },
@@ -461,8 +409,8 @@ const assessmentTranslations = {
       name: '可讀性評分',
       good: {
         title: '可讀性良好',
-        description: '文章易於閱讀',
-        recommendation: '太好了！你的文章易於理解。'
+        description: '',
+        recommendation: ''
       },
       ok: {
         title: '可讀性尚可',
@@ -479,8 +427,8 @@ const assessmentTranslations = {
       name: 'Readability Score',
       good: {
         title: 'Good Readability',
-        description: 'Text is easy to read',
-        recommendation: 'Great! Your text is easy to understand.'
+        description: '',
+        recommendation: ''
       },
       ok: {
         title: 'Fair Readability',
@@ -502,8 +450,8 @@ const assessmentTranslations = {
       name: '段落長度檢測',
       good: {
         title: '段落長度適中',
-        description: '所有段落長度都在建議範圍內',
-        recommendation: '很好！你的段落長度適合閱讀。'
+        description: '',
+        recommendation: ''
       },
       bad: {
         title: '段落過長',
@@ -515,8 +463,8 @@ const assessmentTranslations = {
       name: 'Paragraph Length Check',
       good: {
         title: 'Good Paragraph Length',
-        description: 'All paragraphs are within recommended length',
-        recommendation: 'Great! Your paragraph lengths are reader-friendly.'
+        description: '',
+        recommendation: ''
       },
       bad: {
         title: 'Long Paragraphs',
@@ -532,8 +480,8 @@ const assessmentTranslations = {
       name: '句子長度檢測',
       good: {
         title: '句子長度適中',
-        description: '大部分句子長度都在建議範圍內',
-        recommendation: '太棒了！你的句子長度適合閱讀。'
+        description: '',
+        recommendation: ''
       },
       bad: {
         title: '句子過長',
@@ -545,8 +493,8 @@ const assessmentTranslations = {
       name: 'Sentence Length Check',
       good: {
         title: 'Good Sentence Length',
-        description: 'Most sentences are within recommended length',
-        recommendation: 'Excellent! Your sentence lengths are reader-friendly.'
+        description: '',
+        recommendation: ''
       },
       bad: {
         title: 'Long Sentences',
@@ -559,25 +507,24 @@ const assessmentTranslations = {
 
   SUBHEADING_DISTRIBUTION_POOR: {
     'zh-TW': {
-      name: '子標題分布檢測',
+      name: '標題層級結構',
       good: {
-        title: '子標題分布良好',
-        description: '子標題分布合理',
-        recommendation: '很好！你的內容結構清晰。'
+        title: '標題層級很清楚',
+        description: '',
+        recommendation: ''
       },
       bad: {
-        title: '子標題分布不佳',
-        description: '文字區塊過長，缺少子標題',
-        recommendation:
-          '增加子標題來改善內容結構，建議每 300 字至少一個子標題。'
+        title: '需要多一點小標題',
+        description: '有些段落太長，可以用小標題分段',
+        recommendation: '每隔 2-3 段加個小標題，讓讀者更容易閱讀！'
       }
     },
     en: {
       name: 'Subheading Distribution Check',
       good: {
         title: 'Good Subheading Distribution',
-        description: 'Subheadings are well distributed',
-        recommendation: 'Great! Your content structure is clear.'
+        description: '',
+        recommendation: ''
       },
       bad: {
         title: 'Poor Subheading Distribution',

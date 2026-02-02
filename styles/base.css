@@ -1,102 +1,198 @@
 /**
- * 基礎樣式和重置
+ * PageLens Base Styles
+ * Typography, reset, and foundational styles
  */
-* {
+
+/* Box sizing and Reset */
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
-
-body {
-  font-family: var(--font-body);
-  background-color: var(--color-background);
-  /* 網格漸層背景 (Mesh Gradient) */
-  background-image:
-    radial-gradient(at 0% 0%, rgba(93, 135, 168, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(52, 94, 125, 0.1) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(44, 62, 80, 0.05) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(93, 135, 168, 0.1) 0px, transparent 50%);
-  background-attachment: fixed;
-  color: var(--text-primary);
-  line-height: 1.6;
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
 }
 
+/* Body - Light Mode (Fullscreen Dashboard) */
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  color: var(--text-primary-light);
+  background-color: var(--canvas-bg-light);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Mesh Gradient Background */
+  background-image:
+    radial-gradient(at 0% 0%, rgba(14, 165, 161, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(34, 211, 238, 0.06) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(14, 165, 161, 0.04) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(34, 211, 238, 0.06) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* Typography Scale */
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-heading);
+  font-family: var(--font-display);
+  font-weight: 600;
   letter-spacing: -0.02em;
-  /* 稍微緊湊的標題字距 */
+  line-height: 1.3;
+  color: var(--text-primary-light);
 }
 
-/* 容器 */
+h1 {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+}
+
+h2 {
+  font-size: var(--text-xl);
+}
+
+h3 {
+  font-size: var(--text-lg);
+}
+
+h4 {
+  font-size: var(--text-base);
+}
+
+/* Links */
+a {
+  color: var(--accent-teal);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--accent-teal-light);
+}
+
+/* Selection */
+::selection {
+  background: rgba(14, 165, 161, 0.3);
+  color: var(--text-primary-light);
+}
+
+/* Focus Visible */
+:focus-visible {
+  outline: 2px solid var(--accent-teal);
+  outline-offset: 2px;
+}
+
+/* Button Reset */
+button {
+  font-family: inherit;
+  font-size: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* Input Reset */
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Container */
 .container {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
+/* Main content area */
 main {
   flex: 1;
-  background-color: var(--color-background);
+  background-color: var(--canvas-bg-light);
 }
 
+/* Footer */
 footer {
-  background: var(--color-white);
-  padding: 1.5rem;
+  background: var(--canvas-elevated-light);
+  padding: var(--space-xl);
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--text-secondary-light);
   border-top: 1px solid var(--border-light);
   margin-top: auto;
+  font-size: var(--text-sm);
 }
 
-/* 基礎動畫 */
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+::-webkit-scrollbar-track {
+  background: var(--glass-bg);
+  border-radius: var(--radius-full);
 }
 
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+::-webkit-scrollbar-thumb {
+  background: var(--text-tertiary-light);
+  border-radius: var(--radius-full);
 }
 
-@keyframes fadeOut {
-  from {
-    opacity: 1;
-  }
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary-light);
+}
 
-  to {
-    opacity: 0;
-    transform: translateX(100%);
-  }
+/* Utility Classes */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+/* Text truncation */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

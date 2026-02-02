@@ -156,8 +156,8 @@ export class UI {
         <div class="assessment-list">
           <div class="assessment-item">
             <label>
-              <input type="checkbox" value="H1_KEYWORD" checked>
-              <span>H1 關鍵字檢測</span>
+              <input type="checkbox" value="H1_CHECK" checked>
+              <span>H1 標題檢測</span>
             </label>
           </div>
           <div class="assessment-item">
@@ -168,44 +168,14 @@ export class UI {
           </div>
           <div class="assessment-item">
             <label>
-              <input type="checkbox" value="KEYWORD_DENSITY" checked>
-              <span>關鍵字密度</span>
+              <input type="checkbox" value="META_DESCRIPTION" checked>
+              <span>Meta 描述</span>
             </label>
           </div>
           <div class="assessment-item">
             <label>
-              <input type="checkbox" value="META_DESCRIPTION_KEYWORD" checked>
-              <span>Meta 描述關鍵字</span>
-            </label>
-          </div>
-          <div class="assessment-item">
-            <label>
-              <input type="checkbox" value="TEXT_LENGTH" checked>
-              <span>文本長度</span>
-            </label>
-          </div>
-        </div>
-      </div>
-      
-      <div class="assessment-group">
-        <h4>可讀性檢測項目</h4>
-        <div class="assessment-list">
-          <div class="assessment-item">
-            <label>
-              <input type="checkbox" value="SENTENCE_LENGTH_IN_TEXT" checked>
-              <span>句子長度</span>
-            </label>
-          </div>
-          <div class="assessment-item">
-            <label>
-              <input type="checkbox" value="PARAGRAPH_TOO_LONG" checked>
-              <span>段落長度</span>
-            </label>
-          </div>
-          <div class="assessment-item">
-            <label>
-              <input type="checkbox" value="FLESCH_READING_EASE" checked>
-              <span>可讀性評分</span>
+              <input type="checkbox" value="TITLE_CHECK" checked>
+              <span>頁面標題</span>
             </label>
           </div>
         </div>

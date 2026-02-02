@@ -1,0 +1,256 @@
+/**
+ * PageLens Animation System
+ * Centralized animations and micro-interactions
+ */
+
+/* ========================================
+   STATUS ANIMATIONS
+   ======================================== */
+
+/* Glow Pulse for Active Status */
+@keyframes glow-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(14, 165, 161, 0.15);
+    }
+
+    50% {
+        box-shadow: 0 0 30px rgba(14, 165, 161, 0.25), 0 0 50px rgba(14, 165, 161, 0.1);
+    }
+}
+
+/* Status Indicator Pulse */
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.7;
+        transform: scale(0.8);
+    }
+}
+
+/* ========================================
+   LOADING ANIMATIONS
+   ======================================== */
+
+/* Spin */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Dual Ring Spinner */
+@keyframes spin-reverse {
+    0% {
+        transform: rotate(360deg);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+/* Skeleton Loading */
+@keyframes skeleton {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* ========================================
+   ENTRANCE ANIMATIONS
+   ======================================== */
+
+/* Slide Up */
+@keyframes slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Slide Down */
+@keyframes slide-down {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Slide In Right */
+@keyframes slide-in-right {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Fade In */
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Scale In */
+@keyframes scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ========================================
+   EXIT ANIMATIONS
+   ======================================== */
+
+/* Fade Out */
+@keyframes fade-out {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Apply glow pulse animation */
+.animate-glow-pulse {
+    animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* Apply pulse animation */
+.animate-pulse {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Apply spin animation */
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Apply slide up animation */
+.animate-slide-up {
+    animation: slide-up 0.5s ease backwards;
+}
+
+/* Apply fade in animation */
+.animate-fade-in {
+    animation: fade-in 0.3s ease;
+}
+
+/* Staggered entrance delays */
+.stagger-1 {
+    animation-delay: 0s;
+}
+
+.stagger-2 {
+    animation-delay: 0.05s;
+}
+
+.stagger-3 {
+    animation-delay: 0.1s;
+}
+
+.stagger-4 {
+    animation-delay: 0.15s;
+}
+
+.stagger-5 {
+    animation-delay: 0.2s;
+}
+
+.stagger-6 {
+    animation-delay: 0.25s;
+}
+
+/* ========================================
+   HOVER TRANSITIONS
+   ======================================== */
+
+/* Lift on hover */
+.hover-lift {
+    transition: transform var(--transition-spring), box-shadow var(--transition-base);
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+}
+
+/* Slide right on hover */
+.hover-slide-right {
+    transition: transform var(--transition-base);
+}
+
+.hover-slide-right:hover {
+    transform: translateX(4px);
+}
+
+/* Scale on hover */
+.hover-scale {
+    transition: transform var(--transition-base);
+}
+
+.hover-scale:hover {
+    transform: scale(1.02);
+}
+
+/* ========================================
+   REDUCED MOTION SUPPORT
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

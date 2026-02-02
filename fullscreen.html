@@ -6,28 +6,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PageLens SEO 分析器</title>
   <link rel="stylesheet" href="styles/variables.css">
+  <link rel="stylesheet" href="styles/animations.css">
   <link rel="stylesheet" href="styles/base.css">
   <link rel="stylesheet" href="styles/layout.css">
   <link rel="stylesheet" href="styles/components.css">
   <link rel="stylesheet" href="styles/elements.css">
   <link rel="stylesheet" href="styles/toast.css">
+  <link rel="stylesheet" href="styles/helper.css">
 </head>
+
 
 <body>
   <div class="container">
     <header>
       <div class="header-content">
         <div class="brand">
-          <img src="assets/logo_with_text.png" alt="PageLens SEO 分析器" style="height: 40px; width: auto;">
-          <div class="brand-meta">
-            <div class="eyebrow">Browser Panel</div>
-            <div class="headline">PageLens SEO 分析器</div>
-          </div>
+          <!-- Branding removed to reduce cognitive load as per user request -->
         </div>
         <div class="header-actions">
-          <select id="languageSelector" class="btn header-control">
-            <option value="zh-TW">🇹🇼 中文</option>
-            <option value="en">🇺🇸 English</option>
+          <select id="languageSelector" class="header-control">
+            <option value="zh-TW">🌐 中文</option>
+            <option value="en">🌐 English</option>
           </select>
           <button class="btn btn-primary" id="helpBtn">使用說明</button>
         </div>
@@ -37,16 +36,20 @@
     <main>
       <div class="content-wrapper" id="contentWrapper">
         <div class="left-panel" id="currentPagePanel">
-          <div class="info-card">
-            <h3>頁面基本資訊</h3>
-            <div id="pageInfoContainer">
+          <div class="card">
+            <div class="card-header">
+              <h3>頁面基本資訊</h3>
+            </div>
+            <div class="card-body" id="pageInfoContainer">
               <!-- 頁面資訊將動態載入 -->
             </div>
           </div>
 
-          <div class="info-card">
-            <h3>HTML 元素分析</h3>
-            <div id="htmlElementsContainer">
+          <div class="card">
+            <div class="card-header">
+              <h3>HTML 元素分析</h3>
+            </div>
+            <div class="card-body" id="htmlElementsContainer">
               <!-- HTML 元素分析將動態載入 -->
             </div>
           </div>
@@ -55,33 +58,29 @@
         <div class="right-panel">
           <div class="url-analyzer" id="urlAnalyzerPanel">
             <h3>WordPress URL 分析</h3>
-            <div class="url-input-section">
-              <div class="form-group">
-                <label for="customUrlInput">輸入 WordPress/PressLogic 文章網址進行分析</label>
-                <div class="url-input-wrapper">
-                  <input type="text" id="customUrlInput" placeholder="https://holidaysmart.io/hk/article/..."
-                    list="supportedSitesDatalist">
-                  <button class="btn" id="analyzeUrlBtn">分析</button>
-                </div>
-                <datalist id="supportedSitesDatalist">
-                  <option value="https://pretty.presslogic.com/article/...">Pretty</option>
-                  <option value="https://girlstyle.com/article/...">GirlStyle</option>
-                  <option value="https://holidaysmart.io/hk/article/...">HolidaySmart</option>
-                  <option value="https://urbanlifehk.com/article/...">UrbanLife</option>
-                  <option value="https://poplady-mag.com/article/...">PopLady</option>
-                  <option value="https://topbeautyhk.com/article/...">TopBeauty</option>
-                </datalist>
-                <div class="url-hint" id="urlHint">
-                  支援站點：Pretty、GirlStyle、HolidaySmart、UrbanLife、PopLady、TopBeauty（網址需包含 /article/）
-                </div>
-                <div class="inline-feedback" id="urlFeedback" aria-live="polite"></div>
-              </div>
+            <div class="url-input-wrapper">
+              <input type="text" id="customUrlInput" placeholder="輸入 WordPress/PressLogic 文章網址進行分析"
+                list="supportedSitesDatalist">
+              <button class="btn" id="analyzeUrlBtn">分析</button>
             </div>
+            <datalist id="supportedSitesDatalist">
+              <option value="https://pretty.presslogic.com/article/...">Pretty</option>
+              <option value="https://girlstyle.com/article/...">GirlStyle</option>
+              <option value="https://holidaysmart.io/hk/article/...">HolidaySmart</option>
+              <option value="https://urbanlifehk.com/article/...">UrbanLife</option>
+              <option value="https://poplady-mag.com/article/...">PopLady</option>
+              <option value="https://topbeautyhk.com/article/...">TopBeauty</option>
+            </datalist>
+            <div class="url-hint" id="urlHint">
+              支援站點：Pretty、GirlStyle、HolidaySmart、UrbanLife、PopLady、TopBeauty（網址需包含 /article/）
+            </div>
+            <div class="inline-feedback" id="urlFeedback" aria-live="polite" style="display: none;"></div>
           </div>
 
           <div class="results-empty-state" id="resultsEmptyState">
             輸入網址並開始分析後，結果會在此顯示。
           </div>
+
           <div class="results-container" id="resultsContainer">
             <div class="results-header">
               <div>
@@ -100,6 +99,7 @@
                 </span>
               </button>
             </div>
+
             <div class="issues-container">
               <div id="issuesList">
                 <!-- 問題列表將動態載入 -->

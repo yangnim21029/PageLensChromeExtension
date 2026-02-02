@@ -30,7 +30,7 @@ console.log('SEO 分數:', result.report.overallScores.seoScore);
 
 ### 📚 完整文檔
 
-- **`GET /docs`** - 完整 API 文檔和所有 16 個評估項目
+- **`GET /docs`** - 完整 API 文檔和所有 14 個評估項目
 - **`GET /example`** - 使用範例和完整請求/回應格式
 
 ## 📋 主要端點
@@ -127,7 +127,7 @@ GET /example  # 使用範例
 ### 統一評估 ID 格式
 
 - **統一命名：** 所有評估 ID 現在前後端一致（如 `H1_MISSING = 'H1_MISSING'`）
-- **固定數量：** 每次分析保證返回 16 個評估結果（12 個 SEO + 4 個可讀性）
+- **固定數量：** 每次分析保證返回 14 個評估結果（10 個 SEO + 4 個可讀性）
 - **增強回應：** 包含處理時間、API 版本、時間戳等資訊
 
 ### 🆕 像素寬度計算
@@ -157,12 +157,6 @@ GET /example  # 使用範例
 - **向後兼容：** API 仍接受 `synonyms` 參數，會自動映射到 `relatedKeywords`
 - **未來保留：** `synonyms` 欄位保留給未來真正的同義詞功能使用
 
-### 首段關鍵字檢測改進 (v2.5)
-
-- **精準檢測：** 首段檢測現在使用 `paragraphs` 陣列，只分析 `<p>` 標籤內容
-- **排除標題：** 不再將 H1 或其他標題文字誤判為首段內容
-- **標準回應：** 評估結果包含 `details.firstParagraph` 顯示前 100 字預覽
-- **新增標準值：** 添加 `standards` 欄位，說明「首段（前 100 字）應包含焦點關鍵字」
 
 ### 詳細使用指南
 
@@ -317,17 +311,16 @@ API 現在會在 `pageUnderstanding` 欄位返回頁面的結構化理解資訊�
 ...
 ```
 
-## 🔧 16 個評估項目
+## 🔧 14 個評估項目
 
-### SEO 項目 (12 個)
+### SEO 項目 (10 個)
 
 - `H1_MISSING` - H1 標籤檢測
 - `MULTIPLE_H1` - 多重 H1 檢測
 - `H1_KEYWORD_MISSING` - H1 關鍵字檢測
 - `H2_SYNONYMS_MISSING` - H2 相關關鍵字檢測（檢查 relatedKeywords）
 - `IMAGES_MISSING_ALT` - 圖片 Alt 檢測
-- `KEYWORD_MISSING_FIRST_PARAGRAPH` - 首段關鍵字檢測（v2.5: 排除標題，只分析實際段落內容）
-- `KEYWORD_DENSITY_LOW` - 關鍵字密度檢測（v2.4: 考慮關鍵字長度，H2 關鍵字享 2x 權重；支援空格分隔的關鍵字）
+
 - `META_DESCRIPTION_NEEDS_IMPROVEMENT` - Meta 描述檢測
 - `META_DESCRIPTION_MISSING` - Meta 描述長度檢測
 - `TITLE_NEEDS_IMPROVEMENT` - Meta 標題優化檢測
@@ -355,25 +348,11 @@ API 現在會在 `pageUnderstanding` 欄位返回頁面的結構化理解資訊�
 - **覆蓋率評分：** 100% 覆蓋得滿分，50% 以上為 OK，低於 50% 為 BAD
 - **內容結構：** 確保相關關鍵字分佈在各個章節，提升內容相關性
 
-### 關鍵字密度計算 (v2.4)
-
-- **計算公式：** (關鍵字長度 × 出現次數) / 總字數 × 100%
-- **H2 權重：** H2 中的關鍵字獲得 2 倍權重
-- **空格支援：** 關鍵字如「洗面乳 推薦」會分別計算每個詞
-- **回應新增：** `keywordLength` 顯示關鍵字長度
-- **最佳範圍：** 0.5-2.5%（optimal）
-- **可接受範圍：** 0.5-6.0%（acceptable）
 
 ### 最近更新
 
-**v2.5**
-
-- 首段關鍵字檢測改進：排除標題文字，只分析 `<p>` 標籤內容
-- 為 KEYWORD_MISSING_FIRST_PARAGRAPH 添加 standards 欄位
-
 **v2.4**
 
-- 關鍵字密度計算考慮關鍵字長度
 - H2 關鍵字獲得 2x 權重
 - 支援空格分隔的關鍵字
 

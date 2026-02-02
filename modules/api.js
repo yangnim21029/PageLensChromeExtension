@@ -6,7 +6,7 @@ export class PageLensAPI {
   constructor() {
     // 檢查是否在開發模式（可以通過 URL 參數或 localStorage 設定）
     const isDevelopment = this.checkDevelopmentMode();
-    
+
     // 根據模式設定 API 端點順序
     this.apiEndpoints = isDevelopment ? [
       'http://localhost:3000',               // 開發模式優先使用本地版本
@@ -15,11 +15,11 @@ export class PageLensAPI {
       'https://page-lens-zeta.vercel.app',  // 生產模式優先使用雲端版本
       'http://localhost:3000'                // 備用本地版本
     ];
-    
+
     console.log('PageLens API 模式:', isDevelopment ? '開發模式' : '生產模式');
     console.log('API 端點優先順序:', this.apiEndpoints);
   }
-  
+
   /**
    * 檢查是否在開發模式
    * @returns {boolean}
@@ -30,21 +30,21 @@ export class PageLensAPI {
     if (urlParams.get('dev') === 'true') {
       return true;
     }
-    
+
     // 方法 2: 檢查 localStorage
     if (localStorage.getItem('pageLensDevMode') === 'true') {
       return true;
     }
-    
+
     // 方法 3: 檢查是否在本地開發環境
-    if (window.location.hostname === 'localhost' || 
-        window.location.hostname === '127.0.0.1') {
+    if (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1') {
       return true;
     }
-    
+
     return false;
   }
-  
+
   /**
    * 切換開發模式
    * @param {boolean} enabled
@@ -66,21 +66,21 @@ export class PageLensAPI {
    */
   async callAPI(endpoint, options = {}) {
     const errors = [];
-    
+
     // 嘗試每個 API 端點
     for (const baseUrl of this.apiEndpoints) {
       const url = `${baseUrl}${endpoint}`;
       const apiType = baseUrl.includes('localhost') ? '本地版本' : '雲端版本';
-      
+
       try {
         console.log(`嘗試調用 API: ${url} (${apiType})`);
-        
+
         const response = await fetch(url, {
           ...options,
           mode: 'cors',
           credentials: 'omit'
         });
-        
+
         if (response.ok) {
           console.log(`✅ API 調用成功 (${apiType}): ${url}`);
           // 在 response 中標記使用的 API 類型
@@ -96,7 +96,7 @@ export class PageLensAPI {
         errors.push(`${apiType}: ${error.message}`);
       }
     }
-    
+
     // 所有端點都失敗
     throw new Error(`所有 API 都無法連接。${errors.join(', ')}`);
   }
@@ -114,7 +114,7 @@ export class PageLensAPI {
       },
       body: JSON.stringify(analysisRequest)
     });
-    
+
     return await response.json();
   }
 
@@ -131,7 +131,7 @@ export class PageLensAPI {
       },
       body: JSON.stringify(analysisRequest)
     });
-    
+
     return await response.json();
   }
 
@@ -148,7 +148,46 @@ export class PageLensAPI {
       },
       body: JSON.stringify(request)
     });
-    
+
+    return await response.json();
+  }
+
+  /**
+   * AI 分析 Meta Tags
+   * @param {Object} data { title, description, content, keyword }
+   */
+  async analyzeAIMeta(data) {
+    const response = await this.callAPI('/ai/analyze-meta', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return await response.json();
+  }
+
+  /**
+   * AI 寫作小幫手建議
+   * @param {Object} data { task, text, context, targetTone, language }
+   */
+  async callWritingAssistant(data) {
+    const response = await this.callAPI('/ai/writing-assistant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return await response.json();
+  }
+
+  /**
+   * AI 分析 Alt Text
+   * @param {Object} data { imageSrc, context }
+   */
+  async analyzeAIAlt(data) {
+    const response = await this.callAPI('/ai/analyze-alt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
     return await response.json();
   }
 
@@ -165,7 +204,7 @@ export class PageLensAPI {
       },
       body: JSON.stringify(request)
     });
-    
+
     return await response.json();
   }
 
